@@ -1,0 +1,36 @@
+{
+    "name": "winavin/permissions",
+    "description": "Laravel permissions and roles management package for multiple Teams",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Navin Patil",
+            "email": "winavin@gmail.com",
+            "homepage": "https://github.com/winavin"
+        }
+    ],
+    "homepage": "https://github.com/winavin/permissions",
+    "keywords": ["Laravel", "Permissions"],
+    "require": {
+        "laravel/framework": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+    },
+    "autoload": {
+        "psr-4": {
+            "Winavin\\Permissions\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Winavin\\Permissions\\Tests\\": "tests"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Winavin\\Permissions\\PermissionsServiceProvider"
+            ]
+        }
+    }
+}

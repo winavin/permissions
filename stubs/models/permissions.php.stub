@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Relations\MorphPivot;
+use App\Enums\{Model}Permission;
+
+class {{Model}}Permissions extends MorphPivot
+{
+    protected $table = '{{model}}_permissions';
+
+    protected function casts(): array
+    {
+        return [
+            'permission' => {Model}Permission::class,
+        ];
+    }
+}

@@ -1,0 +1,11 @@
+<?php
+  
+namespace App\Enums;
+
+enum {{Model}}Permission: string
+{
+    case VIEW = 'view';
+    case CREATE = 'create';
+    case UPDATE = 'update';
+    case DELETE = 'delete';
+}
