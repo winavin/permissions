@@ -1,6 +1,6 @@
 <?php
 
-namespace Winavin\Permissions\Middleware;
+namespace Winavin\Permissions\Middlewares;
 
 use Closure;
 use Illuminate\Http\Request;
