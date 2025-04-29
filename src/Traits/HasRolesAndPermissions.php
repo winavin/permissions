@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
+use phpDocumentor\Reflection\PseudoTypes\True_;
 
 trait HasRolesAndPermissions
 {
@@ -72,6 +73,27 @@ trait HasRolesAndPermissions
         return $value instanceof BackedEnum ? $value->value : $value;
     }
 
+    protected function cacheKey(string $type, $team = null, $identifier = null): string
+    {
+        $teamKey = $team ? "{$team->id}-" : '';
+        $identifierKey = $identifier ? "-{$identifier}" : '';
+        return "{$type}:{$this->getKey()}:{$teamKey}{$identifierKey}";
+    }
+
+    protected function clearRoleCache($team = null): void
+    {
+        // Clear all related cache keys
+        Cache::forget($this->cacheKey('roles', $team));
+        Cache::forget($this->cacheKey('has_role', $team));
+    }
+
+    protected function clearPermissionCache($team = null): void
+    {
+        // Clear all related cache keys
+        Cache::forget($this->cacheKey('direct_permissions', $team));
+        Cache::forget($this->cacheKey('has_permission', $team));
+    }
+
     public function roles($team = null): Collection
     {
         // Cache the result for faster access
@@ -121,12 +143,74 @@ trait HasRolesAndPermissions
         });
     }
 
+    public function hasAnyRole(array $roles = [], $team = null): bool
+    {
+        // If no roles are provided, check if the user has any roles
+        if (empty($roles)) {
+            return ! empty($this->roles($team));
+        }
+
+        // Check if the user has any of the provided roles
+        $hasAnyRole = false;
+        foreach ($roles as $role) {
+            if ($this->hasRole($role, $team)) {
+                $hasAnyRole = true;
+                break;
+            }
+        }
+        return $hasAnyRole;
+    }
+
+    public function hasAllRoles(array $roles, $team = null): bool
+    {
+        $hasAllRoles = true;
+        foreach ($roles as $role) {
+            if ($this->hasRole($role, $team)) {
+                $hasAllRoles = false;
+                break;
+            }
+        }
+        return $hasAllRoles;
+    }
+
     public function hasPermission(string|BackedEnum $permission, $team = null): bool
     {
         $cacheKey = $this->cacheKey('has_permission', $team, $permission);
         return Cache::rememberForever($cacheKey, function () use ($permission, $team) {
             return $this->permissions($team)->contains($this->resolveEnumValue($permission));
         });
+    }
+    
+
+    public function hasAnyPermission(array $permissions = [], $team = null): bool
+    {
+        // If no permissions are provided, check if the user has any permission
+        if (empty($permissions)) {
+            return ! empty($this->permissions($team, $team));
+        }
+
+        // Check if the user has any of the provided permission
+        $hasAnyPermission = false;
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission, $team)) {
+                $hasAnyPermission = true;
+                break;
+            }
+        }
+        return $hasAnyPermission;
+    }
+    
+
+    public function hasAllPermissions(array $permissions, $team = null): bool
+    {
+        $hasAllPermissions = true;
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission, $team)) {
+                $hasAllPermissions = false;
+                break;
+            }
+        }
+        return $hasAllPermissions;
     }
 
     public function isAbleTo(string|BackedEnum $permission, $team = null): bool
@@ -176,27 +260,6 @@ trait HasRolesAndPermissions
         return $this->applyTeamScope($this->permissionRelations(), $team)
                     ->where('permission', $permission->value)
                     ->delete();
-    }
-
-    protected function cacheKey(string $type, $team = null, $identifier = null): string
-    {
-        $teamKey = $team ? "{$team->id}-" : '';
-        $identifierKey = $identifier ? "-{$identifier}" : '';
-        return "{$type}:{$this->getKey()}:{$teamKey}{$identifierKey}";
-    }
-
-    protected function clearRoleCache($team = null): void
-    {
-        // Clear all related cache keys
-        Cache::forget($this->cacheKey('roles', $team));
-        Cache::forget($this->cacheKey('has_role', $team));
-    }
-
-    protected function clearPermissionCache($team = null): void
-    {
-        // Clear all related cache keys
-        Cache::forget($this->cacheKey('direct_permissions', $team));
-        Cache::forget($this->cacheKey('has_permission', $team));
     }
 
     public function syncRoles(array $roles, $team = null)
