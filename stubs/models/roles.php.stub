@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\MorphPivot;
-use App\Enums\{Model}Role;
+use App\Enums\{{Model}}Role;
 
 class {{Model}}Roles extends MorphPivot
 {
@@ -12,7 +12,7 @@ class {{Model}}Roles extends MorphPivot
     protected function casts(): array
     {
         return [
-            'role' => {Model}Role::class,
+            'role' => {{Model}}Role::class,
         ];
     }
 }

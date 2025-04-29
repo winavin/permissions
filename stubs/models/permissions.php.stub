@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\MorphPivot;
-use App\Enums\{Model}Permission;
+use App\Enums\{{Model}}Permission;
 
 class {{Model}}Permissions extends MorphPivot
 {
@@ -12,7 +12,7 @@ class {{Model}}Permissions extends MorphPivot
     protected function casts(): array
     {
         return [
-            'permission' => {Model}Permission::class,
+            'permission' => {{Model}}Permission::class,
         ];
     }
 }
