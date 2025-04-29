@@ -1,6 +1,6 @@
 {
     "name": "winavin/permissions",
-    "description": "Laravel permissions and roles management package for multiple Teams",
+    "description": "A lightweight, Enum-driven Roles & Permissions package for Laravel, designed for multi-model and multi-team systems without requiring database-stored role or permission definitions.",
     "license": "MIT",
     "authors": [
         {
@@ -10,7 +10,7 @@
         }
     ],
     "homepage": "https://github.com/winavin/permissions",
-    "keywords": ["Laravel", "Permissions"],
+    "keywords": ["php", "security", "laravel", "permissions", "roles", "authorization", "multiuser", "teams", "enums"],
     "require": {
         "laravel/framework": "^10.0|^11.0|^12.0"
     },
