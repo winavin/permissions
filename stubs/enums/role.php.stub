@@ -6,12 +6,12 @@ use BackedEnum;
 
 enum {{Model}}Role : string
 {
-    case ADMINISTATOR = 'administrator';
+    case ADMINISTRATOR = 'administrator';
 
     public function permissions(): array
     {
         return match ($this) {
-            self::ADMINISTATOR => [
+            self::ADMINISTRATOR => [
                 {{Model}}Permission::VIEW,
                 {{Model}}Permission::CREATE,
                 {{Model}}Permission::UPDATE,
