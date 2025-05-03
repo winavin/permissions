@@ -52,16 +52,6 @@ trait HasRolesAndPermissions
         return strtolower(class_basename(static::class)) . '_id';
     }
 
-    public function roleRelations(): HasMany
-    {
-        return $this->hasMany($this->getRoleClass(), $this->getOwnerForeignKey());
-    }
-
-    public function permissionRelations(): HasMany
-    {
-        return $this->hasMany($this->getPermissionClass(), $this->getOwnerForeignKey());
-    }
-
     protected function applyTeamScope(Builder|HasMany $query, $team = null): Builder|HasMany
     {
         return $query->when($team, fn($q) => $q->where('team_type', get_class($team))
@@ -92,6 +82,16 @@ trait HasRolesAndPermissions
         // Clear all related cache keys
         Cache::forget($this->cacheKey('direct_permissions', $team));
         Cache::forget($this->cacheKey('has_permission', $team));
+    }
+
+    public function roleRelations(): HasMany
+    {
+        return $this->hasMany($this->getRoleClass(), $this->getOwnerForeignKey());
+    }
+
+    public function permissionRelations(): HasMany
+    {
+        return $this->hasMany($this->getPermissionClass(), $this->getOwnerForeignKey());
     }
 
     public function roles($team = null): Collection
@@ -230,6 +230,11 @@ trait HasRolesAndPermissions
         ]);
     }
 
+    public function addRole(BackedEnum $role, $team = null)
+    {
+        return $this->assignRole($role, $team);
+    }
+
     public function assignPermission(BackedEnum $permission, $team = null)
     {
         // Clear cache related to permissions
@@ -240,6 +245,11 @@ trait HasRolesAndPermissions
             'team_type' => $team ? get_class($team) : null,
             'team_id' => $team?->id,
         ]);
+    }
+
+    public function addPermission(BackedEnum $permission, $team = null)
+    {
+        return $this->assignPermission($permission, $team);
     }
 
     public function removeRole(BackedEnum $role, $team = null)
