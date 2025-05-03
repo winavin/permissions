@@ -91,11 +91,15 @@ You define permissions for each Role using the permissions() method inside the c
 ```php
 // Without Teams Model
 $user->assignRole($role);
+$user->addRole($role);
 $user->assignPermission($permission);
+$user->addPermission($permission);
 
 // With Teams Model
 $user->assignRole($role, $team);
+$user->addRole($role, $team);
 $user->assignPermission($permission, $team);
+$user->addPermission($permission, $team);
 ```
 
 ### Checking Roles and Permissions
@@ -141,7 +145,7 @@ All related cache keys will be automatically cleared when you remove a role or p
 ## Notes
 - Cache is automatically managed internally to maintain speed.
 - Whenever you assign, remove, or sync roles/permissions, caches are automatically invalidated.
-- You should always use the provided methods (```assignRole```, ```assignPermission```, ```removeRole```, ```removePermission```) to modify roles and permissions instead of manipulating database records manually.
+- You should always use the provided methods (```assignRole```, ```addRole```, ```assignPermission```, ```addPermission```, ```removeRole```, ```removePermission```) to modify roles and permissions instead of manipulating database records manually.
 
 ## License
 
