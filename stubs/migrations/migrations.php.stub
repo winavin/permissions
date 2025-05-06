@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\{{Model}};
+use App\Models\{{Prefix}};
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -14,9 +14,9 @@ return new class extends Migration
     {
         $is_teams_enebled = config('permissions.is_teams_enebled');
 
-        Schema::create('{{model}}_roles', function (Blueprint $table) use ($is_teams_enebled) {
+        Schema::create('{{prefix}}_roles', function (Blueprint $table) use ($is_teams_enebled) {
             $table->id();
-            $table->foreignIdFor({{Model}}::class, '{{model}}_id')->constrained();
+            $table->foreignIdFor({{Prefix}}::class, '{{prefix}}_id')->constrained();
             
             if($is_teams_enebled)
             {
@@ -27,10 +27,10 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('{{model}}_permissions', function (Blueprint $table) use ($is_teams_enebled) {
+        Schema::create('{{prefix}}_permissions', function (Blueprint $table) use ($is_teams_enebled) {
             $table->id();
             
-            $table->foreignIdFor({{Model}}::class, '{{model}}_id')->constrained();
+            $table->foreignIdFor({{Prefix}}::class, '{{prefix}}_id')->constrained();
 
             if($is_teams_enebled)
             {
@@ -47,7 +47,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('{{model}}_roles');
-        Schema::dropIfExists('{{model}}_permissions');
+        Schema::dropIfExists('{{prefix}}_roles');
+        Schema::dropIfExists('{{prefix}}_permissions');
     }
 };

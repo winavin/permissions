@@ -48,7 +48,8 @@ class PermissionsServiceProvider extends ServiceProvider
         ], 'permissions.config');
 
         $this->commands([
-            \Winavin\Permissions\Console\Install::class,
+            \Winavin\Permissions\Console\PermissionsMakeModel::class,
+            \Winavin\Permissions\Console\PermissionsMakeEnums::class,
         ]);
     }
 }

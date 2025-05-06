@@ -7,43 +7,55 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
-use phpDocumentor\Reflection\PseudoTypes\True_;
 
 trait HasRolesAndPermissions
 {
-    protected function getRoleEnum(): string
+    protected function getRoleEnum($team = null): string
     {
-        $class = "App\\Enums\\" . class_basename(static::class) . "Role";
-        if (!class_exists($class)) {
-            throw new \RuntimeException("Role enum class [$class] not found.");
-        }
-        return $class;
+        return $this->resolveEnumClass('Role', $team);
+    }
+    
+    protected function getPermissionEnum($team = null): string
+    {
+        return $this->resolveEnumClass('Permission', $team);
+    }
+    
+    protected function getRoleClass($team = null): string
+    {
+        return $this->resolveModelClass('Roles', $team);
+    }
+    
+    protected function getPermissionClass($team = null): string
+    {
+        return $this->resolveModelClass('Permissions', $team);
     }
 
-    protected function getPermissionEnum(): string
+    protected function resolveModelClass(string $suffix, $team = null)
     {
-        $class = "App\\Enums\\" . class_basename(static::class) . "Permission";
-        if (!class_exists($class)) {
-            throw new \RuntimeException("Permission enum class [$class] not found.");
-        }
-        return $class;
+        return $this->resolveClass('App\\Models', 'App\\Models', $suffix, $team);
     }
 
-    protected function getRoleClass(): string
+    protected function resolveEnumClass(string $suffix, $team = null)
     {
-        $class = "App\\Models\\" . class_basename(static::class) . "Roles";
-        if (!class_exists($class)) {
-            throw new \RuntimeException("Roles Model class [$class] not found.");
-        }
-        return $class;
+        return $this->resolveClass('App\\Models', 'App\\Enums', $suffix, $team);
     }
 
-    protected function getPermissionClass(): string
+    protected function resolveClass(string $fromNamespace, string $toNamespace, string $suffix, $team = null): string
     {
-        $class = "App\\Models\\" . class_basename(static::class) . "Permissions";
-        if (!class_exists($class)) {
-            throw new \RuntimeException("Permissions Model class [$class] not found.");
+        $modelClass = $team ? get_class($team) : static::class;
+    
+        if (!str_starts_with($modelClass, $fromNamespace)) {
+            throw new \RuntimeException("Model [$modelClass] is not within expected namespace [$fromNamespace].");
         }
+    
+        // Replace the base namespace and append suffix
+        $relativeClass = substr($modelClass, strlen($fromNamespace));
+        $class = rtrim($toNamespace, '\\') . $relativeClass . $suffix;
+    
+        if (!class_exists($class)) {
+            throw new \RuntimeException("Class [$class] not found.");
+        }
+    
         return $class;
     }
 
@@ -84,21 +96,21 @@ trait HasRolesAndPermissions
         Cache::forget($this->cacheKey('has_permission', $team));
     }
 
-    public function roleRelations(): HasMany
+    public function roleRelations($team = null): HasMany
     {
-        return $this->hasMany($this->getRoleClass(), $this->getOwnerForeignKey());
+        return $this->hasMany($this->getRoleClass($team), $this->getOwnerForeignKey());
     }
 
-    public function permissionRelations(): HasMany
+    public function permissionRelations($team = null): HasMany
     {
-        return $this->hasMany($this->getPermissionClass(), $this->getOwnerForeignKey());
+        return $this->hasMany($this->getPermissionClass($team), $this->getOwnerForeignKey());
     }
 
     public function roles($team = null): Collection
     {
         // Cache the result for faster access
         return Cache::rememberForever($this->cacheKey('roles', $team), function () use ($team) {
-            return $this->applyTeamScope($this->roleRelations(), $team)
+            return $this->applyTeamScope($this->roleRelations($team), $team)
                         ->pluck('role');
         });
     }
@@ -107,14 +119,14 @@ trait HasRolesAndPermissions
     {
         // Cache the result for faster access
         return Cache::rememberForever($this->cacheKey('direct_permissions', $team), function () use ($team) {
-            return $this->applyTeamScope($this->permissionRelations(), $team)
+            return $this->applyTeamScope($this->permissionRelations($team), $team)
                         ->pluck('permission');
         });
     }
 
     public function permissionsThroughRoles($team = null): Collection
     {
-        $roleEnumClass = $this->getRoleEnum();
+        $roleEnumClass = $this->getRoleEnum($team);
         $permissions = [];
 
         foreach ($this->roles($team) as $role) {
@@ -223,7 +235,7 @@ trait HasRolesAndPermissions
         // Clear cache related to roles and permissions
         $this->clearRoleCache($team);
         
-        return $this->roleRelations()->create([
+        return $this->roleRelations($team)->create([
             'role' => $role->value,
             'team_type' => $team ? get_class($team) : null,
             'team_id' => $team?->id,
@@ -240,7 +252,7 @@ trait HasRolesAndPermissions
         // Clear cache related to permissions
         $this->clearPermissionCache($team);
         
-        return $this->permissionRelations()->create([
+        return $this->permissionRelations($team)->create([
             'permission' => $permission->value,
             'team_type' => $team ? get_class($team) : null,
             'team_id' => $team?->id,
@@ -257,7 +269,7 @@ trait HasRolesAndPermissions
         // Clear cache related to roles
         $this->clearRoleCache($team);
 
-        return $this->applyTeamScope($this->roleRelations(), $team)
+        return $this->applyTeamScope($this->roleRelations($team), $team)
                     ->where('role', $role->value)
                     ->delete();
     }
@@ -267,7 +279,7 @@ trait HasRolesAndPermissions
         // Clear cache related to permissions
         $this->clearPermissionCache($team);
 
-        return $this->applyTeamScope($this->permissionRelations(), $team)
+        return $this->applyTeamScope($this->permissionRelations($team), $team)
                     ->where('permission', $permission->value)
                     ->delete();
     }
@@ -277,7 +289,7 @@ trait HasRolesAndPermissions
         // Clear cache related to roles before syncing
         $this->clearRoleCache($team);
 
-        $this->applyTeamScope($this->roleRelations(), $team)->delete();
+        $this->applyTeamScope($this->roleRelations($team), $team)->delete();
 
         foreach ($roles as $role) {
             $this->assignRole($role, $team);
@@ -289,7 +301,7 @@ trait HasRolesAndPermissions
         // Clear cache related to roles before syncing
         $this->clearPermissionCache($team);
 
-        $this->applyTeamScope($this->permissionRelations(), $team)->delete();
+        $this->applyTeamScope($this->permissionRelations($team), $team)->delete();
 
         foreach ($permissions as $permission) {
             $this->assignPermission($permission, $team);

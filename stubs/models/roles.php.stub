@@ -1,18 +1,18 @@
 <?php
 
-namespace App\Models;
+namespace {{namespace}};
 
 use Illuminate\Database\Eloquent\Relations\MorphPivot;
-use App\Enums\{{Model}}Role;
+use App\Enums\{{Prefix}}Role;
 
-class {{Model}}Roles extends MorphPivot
+class {{Prefix}}Roles extends MorphPivot
 {
-    protected $table = '{{model}}_roles';
+    protected $table = '{{prefix}}_roles';
 
     protected function casts(): array
     {
         return [
-            'role' => {{Model}}Role::class,
+            'role' => {{Prefix}}Role::class,
         ];
     }
 }

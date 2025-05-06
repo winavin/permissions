@@ -1,51 +1,25 @@
 <?php
   
-namespace App\Enums;
+namespace {{namespace}};
 
-use BackedEnum;
+use Winavin\Permissions\Traits\Enums\EnumHasPermissions;
 
-enum {{Model}}Role : string
+enum {{Prefix}}Role : string
 {
+    use EnumHasPermissions;
     case ADMINISTRATOR = 'administrator';
 
     public function permissions(): array
     {
         return match ($this) {
             self::ADMINISTRATOR => [
-                {{Model}}Permission::VIEW,
-                {{Model}}Permission::CREATE,
-                {{Model}}Permission::UPDATE,
-                {{Model}}Permission::DELETE,
+                {{Prefix}}Permission::VIEW,
+                {{Prefix}}Permission::CREATE,
+                {{Prefix}}Permission::UPDATE,
+                {{Prefix}}Permission::DELETE,
             ],
+
+            default => [];
         };
-    }
-
-    public function hasPermission(string|BackedEnum $permission) :bool
-    {
-        return in_array($permission, $this->permissions());
-    }
-
-    public function hasAnyPermission(array $permissions) :bool
-    {
-        $hasPermission = false;
-        foreach ($permissions as $permission) {
-            if ($this->hasPermission($permission)) {
-                $hasPermission = true;
-                break;
-            }
-        }
-        return $hasPermission;
-    }
-
-    public function hasAllPermissions(array $permissions) :bool
-    {
-        $hasPermission = true;
-        foreach ($permissions as $permission) {
-            if (! $this->hasPermission($permission)) {
-                $hasPermission = false;
-                break;
-            }
-        }
-        return $hasPermission;
     }
 }
