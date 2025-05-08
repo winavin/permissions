@@ -104,12 +104,6 @@ After that define permissions for Role using the permissions() method inside the
     }
 ```
 
-
-///////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////
-
-
 ## Usage
 
 ### Assigning Roles and Permissions
@@ -117,8 +111,11 @@ After that define permissions for Role using the permissions() method inside the
 ```php
 // Without Teams Model
 $user->assignRole($role);
+//OR
 $user->addRole($role);
+//////////////
 $user->assignPermission($permission);
+// OR
 $user->addPermission($permission);
 
 // With Teams Model

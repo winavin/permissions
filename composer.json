@@ -10,7 +10,17 @@
         }
     ],
     "homepage": "https://github.com/winavin/permissions",
-    "keywords": ["php", "security", "laravel", "permissions", "roles", "authorization", "multiuser", "teams", "enums"],
+    "keywords": [
+        "php",
+        "security",
+        "laravel",
+        "permissions",
+        "roles",
+        "authorization",
+        "multiuser",
+        "teams",
+        "enums"
+    ],
     "require": {
         "laravel/framework": "^10.0|^11.0|^12.0"
     },
@@ -33,4 +43,5 @@
             ]
         }
     }
+    
 }

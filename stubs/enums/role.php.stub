@@ -7,7 +7,7 @@ use Winavin\Permissions\Traits\Enums\EnumHasPermissions;
 enum {{Prefix}}Role : string
 {
     use EnumHasPermissions;
-    case ADMINISTRATOR = 'administrator';
+    case ADMINISTRATOR = '{{prefix}}.administrator';
 
     public function permissions(): array
     {
@@ -19,7 +19,7 @@ enum {{Prefix}}Role : string
                 {{Prefix}}Permission::DELETE,
             ],
 
-            default => [];
+            default => []
         };
     }
 }

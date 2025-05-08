@@ -1,18 +1,65 @@
 <?php
 
-namespace {{namespace}};
+namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphPivot;
-use App\Enums\{{Prefix}}Permission;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class {{Prefix}}Permissions extends MorphPivot
 {
     protected $table = '{{prefix}}_permissions';
 
-    protected function casts(): array
+    public function {{prefix}}(): BelongsTo
     {
-        return [
-            'permission' => {{Prefix}}Permission::class,
-        ];
+        return $this->belongsTo({{Prefix}}::class);
+    }
+
+    public function team(): MorphTo
+    {
+        return $this->morphTo('team');
+    }
+
+    protected function permission(): Attribute
+    {
+        return Attribute::make(
+            get: fn ($value) => $this->resolvePermissionAttribute($value),
+        );
+    }
+
+    private function resolvePermissionAttribute($value)
+    {
+        $enumClass = $this->resolvePermissionEnumClass();
+
+        if (enum_exists($enumClass)) {
+            return $enumClass::tryFrom($value) ?? $value;
+        }
+
+        return $value;
+    }
+
+    protected function resolvePermissionEnumClass(): string
+    {
+        if ($this->relationLoaded('team') || $this->team) {
+            $team = $this->team;
+            if (method_exists($team, 'getPermissionEnum')) {
+                return $team->getPermissionEnum();
+            }
+        }
+
+        ${{prefix}} = $this->{{prefix}};
+        if (${{prefix}} && method_exists(${{prefix}}, 'getPermissionEnum')) {
+            return ${{prefix}}->getPermissionEnum();
+        }
+
+        return 'string';
+    }
+    
+    public function scopeForTeam(Builder $query, $team): Builder
+    {
+        return $query->where('team_type', get_class($team))
+                     ->where('team_id', $team->id);
     }
 }
