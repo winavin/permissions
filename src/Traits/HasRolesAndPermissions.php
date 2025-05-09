@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
+use Winavin\Permissions\Exceptions\InvalidPermissionException;
+use Winavin\Permissions\Exceptions\InvalidRoleException;
 
 trait HasRolesAndPermissions
 {
@@ -45,9 +47,9 @@ trait HasRolesAndPermissions
         return $this->resolveClass('App\\Models', 'App\\Enums', $suffix, $team);
     }
 
-    private function resolveClass(string $fromNamespace, string $toNamespace, string $suffix, $team): string
+    private function resolveClass(string $fromNamespace, string $toNamespace, string $suffix, $team = null): string
     {
-        $modelClass = get_class($team);
+        $modelClass = get_class($team ?? $this);
     
         if (!str_starts_with($modelClass, $fromNamespace)) {
             throw new \RuntimeException("Model [$modelClass] is not within expected namespace [$fromNamespace].");
@@ -67,32 +69,36 @@ trait HasRolesAndPermissions
     {
         return $value instanceof BackedEnum ? $value->value : $value;
     }
-
+    
     private function validateEnumForTeam(BackedEnum|string $value, mixed $team, string $type): void
     {
-        $expectedEnum = null;
         $method = $type === 'role' ? 'getRoleEnum' : 'getPermissionEnum';
-    
-        if (method_exists($team, $method )) {
-            $expectedEnum = $team->{$method}();
-        } elseif (method_exists($this, $method )) {
-            $expectedEnum = $this->{$method}();
-        }
+        
+        $expectedEnum = method_exists($team, $method) ? $team->{$method}() : null;
     
         if ($expectedEnum && $value::class !== $expectedEnum) {
-            throw new InvalidArgumentException("Invalid $type: Enum " . $value::class . " is not valid for the team model " . get_class($team));
+            $enumClass = $value::class;
+            $teamClass = get_class($team);
+    
+            if ($type === 'role') {
+                throw new InvalidRoleException($enumClass, $teamClass);
+            } else {
+                throw new InvalidPermissionException($enumClass, $teamClass);
+            }
         }
-    }
+    }    
 
-    private function getCacheKey($team, string $type): string
+    private function generateCacheKey($team, string $type, string|int|null $value = null): string
     {
         $userClass = str_replace('\\', '.', get_class($this));
         $userId = $this->id;
     
         $teamClass = str_replace('\\', '.', get_class($team));
         $teamId = $team->id;
+
+        $value = is_null($value) ? '' : "-".$value;
     
-        return "{$userClass}-{$userId}-{$teamClass}-{$teamId}-{$type}";
+        return "{$userClass}-{$userId}-{$teamClass}-{$teamId}-{$type}-{$value}";
     }
     
     private function forgetCache($team, string $type): void
@@ -101,7 +107,7 @@ trait HasRolesAndPermissions
         Cache::forget($key);
     }
 
-    private function foregtCacheFor($team, array $types): void
+    private function forgetCacheFor($team, array $types): void
     {
         foreach ($types as $type) {
             $this->forgetCache($team, $type);
@@ -110,12 +116,12 @@ trait HasRolesAndPermissions
 
     private function foregtRolesCacheFor($team)
     {
-        $this->foregtCacheFor($team, ['roles', 'hasRole', 'permissions', 'hasPermission']);
+        $this->forgetCacheFor($team, ['roles', 'hasRole', 'permissions', 'hasPermission']);
     }
 
     private function foregtPermissionsCacheFor($team)
     {
-        $this->foregtCacheFor($team, ['permissions', 'hasPermission']);
+        $this->forgetCacheFor($team, ['permissions', 'hasPermission']);
     }
 
     public function roleRelations($team): HasMany
@@ -162,7 +168,7 @@ trait HasRolesAndPermissions
             $values = $query->forTeam($team)->pluck($column);
             $enumClass = $enumResolver($team);
 
-            return $values->map(fn($value) => $enumClass::from($value) ?? null)->filter();
+            return $values->map(fn($value) => $enumClass::tryFrom($value) ?? null)->filter();
     }
 
     public function permissionsThroughRoles($team): Collection
@@ -177,7 +183,7 @@ trait HasRolesAndPermissions
     public function permissions($team): Collection
     {
         return Cache::rememberForever(
-            $this->generateCacheKey($team, 'roles'),
+            $this->generateCacheKey($team, 'permissions'),
             fn() => collect()
                 ->merge($this->directPermissions($team))
                 ->merge($this->permissionsThroughRoles($team))
@@ -188,46 +194,69 @@ trait HasRolesAndPermissions
 
     public function hasRole(string|BackedEnum $role, $team): bool
     {
+        $this->validateEnumForTeam($role, $team, 'role');
+
         return Cache::rememberForever(
-            $this->generateCacheKey($team, 'hasRole'),
-            fn() => $this->roles($team)->contains($this->resolveEnumValue($role))
+            $this->generateCacheKey($team, 'hasRole', $this->resolveEnumValue($role)),
+            fn() => $this->roles($team)->contains($role)
         );
     }
-
-    public function hasAnyRole(array $roles = [], $team): bool
+    
+    private function checkRoles(array $roles, $team, bool $requireAll = false): bool
     {
         if (empty($roles)) {
             return $this->roles($team)->isNotEmpty();
         }
-
-        return collect($roles)->contains(fn ($role) => $this->hasRole($role, $team));
+    
+        $roles = collect($roles);
+    
+        return $requireAll
+            ? $roles->every(fn ($role) => $this->hasRole($role, $team))
+            : $roles->contains(fn ($role) => $this->hasRole($role, $team));
     }
 
+    public function hasAnyRole(array $roles = [], $team): bool
+    {
+        return $this->checkRoles($roles, $team, false);
+    }
+    
     public function hasAllRoles(array $roles, $team): bool
     {
-        return collect($roles)->every(fn ($role) => $this->hasRole($role, $team));
+        return $this->checkRoles($roles, $team, true);
     }
+
+    private function checkPermissions(array $permissions, $team, bool $requireAll = false): bool
+    {
+        if (empty($permissions)) {
+            return $this->permissions($team)->isNotEmpty();
+        }
+    
+        $permissions = collect($permissions);
+    
+        return $requireAll
+            ? $permissions->every(fn ($permission) => $this->hasPermission($permission, $team))
+            : $permissions->contains(fn ($permission) => $this->hasPermission($permission, $team));
+    }
+    
 
     public function hasPermission(string|BackedEnum $permission, $team): bool
     {
+        $this->validateEnumForTeam($permission, $team, 'permission');
+
         return Cache::rememberForever(
-            $this->generateCacheKey($team, 'hasPermission'),
-            fn() => $this->permissions($team)->contains($this->resolveEnumValue($permission))
+            $this->generateCacheKey($team, 'hasPermission', $this->resolveEnumValue($permission)),
+            fn() => $this->permissions($team)->contains($permission)
         );
     }
 
     public function hasAnyPermission(array $permissions = [], $team): bool
     {
-        if (empty($permissions)) {
-            return $this->permissions($team)->isNotEmpty();
-        }
-
-        return collect($permissions)->contains(fn ($permission) => $this->hasPermission($permission, $team));
+        return $this->checkPermissions($permissions, $team, false);
     }
-
+    
     public function hasAllPermissions(array $permissions, $team): bool
     {
-        return collect($permissions)->every(fn ($permission) => $this->hasPermission($permission, $team));
+        return $this->checkPermissions($permissions, $team, true);
     }
 
     public function isAbleTo(string|BackedEnum $permission, $team): bool
