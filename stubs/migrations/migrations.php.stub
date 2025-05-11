@@ -24,6 +24,7 @@ return new class extends Migration
             }
 
             $table->string('role');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
 
@@ -38,6 +39,7 @@ return new class extends Migration
             }
             
             $table->string('permission');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
     }

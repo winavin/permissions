@@ -3,6 +3,7 @@
 namespace Winavin\Permissions\Traits;
 
 use BackedEnum;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -264,7 +265,7 @@ trait HasRolesAndPermissions
         return $this->hasPermission($permission, $team);
     }
 
-    public function assignRole(BackedEnum $role, $team)
+    public function assignRole(BackedEnum $role, $team, ?Carbon $expiresAt = null)
     {
         $this->validateEnumForTeam($role, $team, 'role');
 
@@ -274,15 +275,16 @@ trait HasRolesAndPermissions
             'role' => $role->value,
             'team_type' => get_class($team),
             'team_id' => $team->id,
+            'expires_at' => $expiresAt,
         ]);
     }
 
-    public function addRole(BackedEnum $role, $team)
+    public function addRole(BackedEnum $role, $team, ?Carbon $expiresAt = null)
     {
-        return $this->assignRole($role, $team);
+        return $this->assignRole($role, $team, $expiresAt);
     }
 
-    public function assignPermission(BackedEnum $permission, $team)
+    public function assignPermission(BackedEnum $permission, $team, ?Carbon $expiresAt = null)
     {
         $this->validateEnumForTeam($permission, $team, 'permission');
 
@@ -292,12 +294,13 @@ trait HasRolesAndPermissions
             'permission' => $permission->value,
             'team_type' => get_class($team),
             'team_id' => $team->id,
+            'expires_at' => $expiresAt,
         ]);
     }
 
-    public function addPermission(BackedEnum $permission, $team)
+    public function addPermission(BackedEnum $permission, $team, ?Carbon $expiresAt = null)
     {
-        return $this->assignPermission($permission, $team);
+        return $this->assignPermission($permission, $team, $expiresAt);
     }
 
     public function removeRole(BackedEnum $role, $team)
