@@ -23,14 +23,14 @@ trait HasRolesAndPermissions
         return $team->getPermissionEnum();
     }
 
-    protected function getRoleClass($team): string
+    protected function getRoleClass(): string
     {
-        return $this->resolveModelClass('Roles', $team);
+        return $this->resolveModelClass('Roles');
     }
 
-    protected function getPermissionClass($team): string
+    protected function getPermissionClass(): string
     {
-        return $this->resolveModelClass('Permissions', $team);
+        return $this->resolveModelClass('Permissions',);
     }
 
     protected function getOwnerForeignKey(): string
@@ -125,14 +125,14 @@ trait HasRolesAndPermissions
         $this->forgetCacheFor($team, ['permissions', 'hasPermission']);
     }
 
-    public function roleRelations($team): HasMany
+    public function roleRelations(): HasMany
     {
-        return $this->hasMany($this->getRoleClass($team), $this->getOwnerForeignKey());
+        return $this->hasMany($this->getRoleClass(), $this->getOwnerForeignKey());
     }
 
-    public function permissionRelations($team): HasMany
+    public function permissionRelations(): HasMany
     {
-        return $this->hasMany($this->getPermissionClass($team), $this->getOwnerForeignKey());
+        return $this->hasMany($this->getPermissionClass(), $this->getOwnerForeignKey());
     }
 
     public function roles($team): Collection
@@ -343,5 +343,28 @@ trait HasRolesAndPermissions
         foreach ($permissions as $permission) {
             $this->assignPermission($permission, $team);
         }
+    }
+
+    public function teams()
+    {
+        $grouped = $this->roleRelations()->with('team')->get()
+                    ->groupBy(function ($role) {
+                        return $role->team_type . ':' . $role->team_id;
+                    });
+
+        return $grouped->map(function ($roles) {
+
+            $team = $roles->first()->team;
+
+            $team->setAttribute('roles', $roles->map(function ($role) {
+                return [
+                    'name'       => $role->role,
+                    'expires_at' => $role->expires_at,
+                ];
+            })->values());
+            
+            return $team;
+
+        })->values();
     }
 }
