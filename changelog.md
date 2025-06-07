@@ -5,4 +5,5 @@ All notable changes to `Permissions` will be documented in this file.
 ## Version 1.0
 
 ### Added
+
 - Everything

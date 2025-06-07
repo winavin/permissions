@@ -12,13 +12,13 @@ class HasAnyRole
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response) $next
      */
-    public function handle(Request $request, Closure $next, string|array $roles, $team = null): Response
+    public function handle( Request $request, Closure $next, string|array $roles, $team = null ) : Response
     {
-        if(! Auth::user()?->hasAnyRole($roles, $team)) {
-            abort(403, 'You do not have the required role(s) to access this resource.');
+        if( !Auth::user()?->hasAnyRole( $roles, $team ) ) {
+            abort( 403, 'You do not have the required role(s) to access this resource.' );
         }
-        return $next($request);
+        return $next( $request );
     }
 }
