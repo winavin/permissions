@@ -1,5 +1,5 @@
 <?php
 
 return [
-    "is_teams_enebled" => true,
+    "is_teams_enabled" => true,
 ];

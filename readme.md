@@ -215,4 +215,4 @@ You can overwrite following methods in trait as per your need.
 
 ## License
 
-This package is open-sourced software licensed under the [license file](MIT License).
+This package is open-sourced software licensed under the MIT.

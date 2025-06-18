@@ -12,13 +12,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $is_teams_enebled = config('permissions.is_teams_enebled');
+        $is_teams_enabled = config('permissions.is_teams_enabled');
 
-        Schema::create('{{prefix}}_roles', function (Blueprint $table) use ($is_teams_enebled) {
+        Schema::create('{{prefix}}_roles', function (Blueprint $table) use (is_teams_enabled) {
             $table->id();
             $table->foreignIdFor({{Prefix}}::class, '{{prefix}}_id')->constrained();
-            
-            if($is_teams_enebled)
+
+            if(is_teams_enabled)
             {
                 $table->nullableMorphs('team');
             }
@@ -28,16 +28,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        Schema::create('{{prefix}}_permissions', function (Blueprint $table) use ($is_teams_enebled) {
+        Schema::create('{{prefix}}_permissions', function (Blueprint $table) use ($is_teams_enabled) {
             $table->id();
-            
+
             $table->foreignIdFor({{Prefix}}::class, '{{prefix}}_id')->constrained();
 
-            if($is_teams_enebled)
+            if($is_teams_enabled)
             {
                 $table->nullableMorphs('team');
             }
-            
+
             $table->string('permission');
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();

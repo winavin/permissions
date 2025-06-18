@@ -3,6 +3,8 @@
 namespace Winavin\Permissions;
 
 use Illuminate\Support\ServiceProvider;
+use Winavin\Permissions\Console\PermissionsMakeEnums;
+use Winavin\Permissions\Console\PermissionsMakeModel;
 
 class PermissionsServiceProvider extends ServiceProvider
 {
@@ -48,8 +50,8 @@ class PermissionsServiceProvider extends ServiceProvider
                           ], 'permissions.config' );
 
         $this->commands( [
-                             \Winavin\Permissions\Console\PermissionsMakeModel::class,
-                             \Winavin\Permissions\Console\PermissionsMakeEnums::class,
+                             PermissionsMakeModel::class,
+                             PermissionsMakeEnums::class,
                          ] );
     }
 }

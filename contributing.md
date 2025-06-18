@@ -2,7 +2,7 @@
 
 Contributions are welcome and will be fully credited.
 
-Contributions are accepted via Pull Requests on [Github](https://github.com/winavin/permissions).
+Contributions are accepted via Pull Requests on [GitHub](https://github.com/winavin/permissions).
 
 # Things you could do
 

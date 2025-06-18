@@ -7,7 +7,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use InvalidArgumentException;
+use RuntimeException;
 use Winavin\Permissions\Exceptions\InvalidPermissionException;
 use Winavin\Permissions\Exceptions\InvalidRoleException;
 
@@ -30,7 +30,7 @@ trait HasRolesAndPermissions
 
     protected function getPermissionClass() : string
     {
-        return $this->resolveModelClass( 'Permissions',);
+        return $this->resolveModelClass( 'Permissions');
     }
 
     protected function getOwnerForeignKey() : string
@@ -38,14 +38,9 @@ trait HasRolesAndPermissions
         return strtolower( class_basename( static::class ) ) . '_id';
     }
 
-    private function resolveModelClass( string $suffix )
+    private function resolveModelClass( string $suffix ) : string
     {
         return $this->resolveClass( 'App\\Models', 'App\\Models', $suffix );
-    }
-
-    private function resolveEnumClass( string $suffix, $team )
-    {
-        return $this->resolveClass( 'App\\Models', 'App\\Enums', $suffix, $team );
     }
 
     private function resolveClass( string $fromNamespace, string $toNamespace, string $suffix, $team = null ) : string
@@ -53,14 +48,14 @@ trait HasRolesAndPermissions
         $modelClass = get_class( $team ?? $this );
 
         if( !str_starts_with( $modelClass, $fromNamespace ) ) {
-            throw new \RuntimeException( "Model [$modelClass] is not within expected namespace [$fromNamespace]." );
+            throw new RuntimeException( "Model [$modelClass] is not within expected namespace [$fromNamespace]." );
         }
 
         $relativeClass = substr( $modelClass, strlen( $fromNamespace ) );
         $class         = rtrim( $toNamespace, '\\' ) . $relativeClass . $suffix;
 
         if( !class_exists( $class ) ) {
-            throw new \RuntimeException( "Class [$class] not found." );
+            throw new RuntimeException( "Class [$class] not found." );
         }
 
         return $class;
@@ -99,7 +94,7 @@ trait HasRolesAndPermissions
 
         $value = is_null( $value ) ? '' : "-" . $value;
 
-        return "{$userClass}-{$userId}-{$teamClass}-{$teamId}-{$type}-{$value}";
+        return "$userClass-$userId-$teamClass-$teamId-$type-$value";
     }
 
     private function forgetCache( $team, string $type ) : void
@@ -115,12 +110,12 @@ trait HasRolesAndPermissions
         }
     }
 
-    private function foregtRolesCacheFor( $team )
+    private function forgetRolesCacheFor( $team ) : void
     {
         $this->forgetCacheFor( $team, [ 'roles', 'hasRole', 'permissions', 'hasPermission' ] );
     }
 
-    private function foregtPermissionsCacheFor( $team )
+    private function forgetPermissionsCacheFor( $team ) : void
     {
         $this->forgetCacheFor( $team, [ 'permissions', 'hasPermission' ] );
     }
@@ -220,7 +215,7 @@ trait HasRolesAndPermissions
 
     public function hasAnyRole( array $roles = [], $team ) : bool
     {
-        return $this->checkRoles( $roles, $team, false );
+        return $this->checkRoles( $roles, $team );
     }
 
     public function hasAllRoles( array $roles, $team ) : bool
@@ -254,7 +249,7 @@ trait HasRolesAndPermissions
 
     public function hasAnyPermission( array $permissions = [], $team ) : bool
     {
-        return $this->checkPermissions( $permissions, $team, false );
+        return $this->checkPermissions( $permissions, $team );
     }
 
     public function hasAllPermissions( array $permissions, $team ) : bool
@@ -271,9 +266,9 @@ trait HasRolesAndPermissions
     {
         $this->validateEnumForTeam( $role, $team, 'role' );
 
-        $this->foregtRolesCacheFor( $team );
+        $this->forgetRolesCacheFor( $team );
 
-        return $this->roleRelations( $team )->firstOrCreate( [
+        return $this->roleRelations()->firstOrCreate( [
                                                                  'role'       => $role->value,
                                                                  'team_type'  => get_class( $team ),
                                                                  'team_id'    => $team->id,
@@ -290,9 +285,9 @@ trait HasRolesAndPermissions
     {
         $this->validateEnumForTeam( $permission, $team, 'permission' );
 
-        $this->foregtPermissionsCacheFor( $team );
+        $this->forgetPermissionsCacheFor( $team );
 
-        return $this->permissionRelations( $team )->firstOrCreate( [
+        return $this->permissionRelations()->firstOrCreate( [
                                                                        'permission' => $permission->value,
                                                                        'team_type'  => get_class( $team ),
                                                                        'team_id'    => $team->id,
@@ -307,9 +302,9 @@ trait HasRolesAndPermissions
 
     public function removeRole( BackedEnum $role, $team )
     {
-        $this->foregtRolesCacheFor( $team );
+        $this->forgetRolesCacheFor( $team );
 
-        return $this->roleRelations( $team )
+        return $this->roleRelations()
                     ->forTeam( $team )
                     ->where( 'role', $role->value )
                     ->delete();
@@ -317,30 +312,30 @@ trait HasRolesAndPermissions
 
     public function removePermission( BackedEnum $permission, $team )
     {
-        $this->foregtPermissionsCacheFor( $team );
+        $this->forgetPermissionsCacheFor( $team );
 
-        return $this->permissionRelations( $team )
+        return $this->permissionRelations()
                     ->forTeam( $team )
                     ->where( 'permission', $permission->value )
                     ->delete();
     }
 
-    public function syncRoles( array $roles, $team )
+    public function syncRoles( array $roles, $team ) : void
     {
-        $this->foregtRolesCacheFor( $team );
+        $this->forgetRolesCacheFor( $team );
 
-        $this->roleRelations( $team )->forTeam( $team )->delete();
+        $this->roleRelations()->forTeam( $team )->delete();
 
         foreach( $roles as $role ) {
             $this->assignRole( $role, $team );
         }
     }
 
-    public function syncPermissions( array $permissions, $team )
+    public function syncPermissions( array $permissions, $team ) : void
     {
-        $this->foregtPermissionsCacheFor( $team );
+        $this->forgetPermissionsCacheFor( $team );
 
-        $this->permissionRelations( $team )->forTeam( $team )->delete();
+        $this->permissionRelations()->forTeam( $team )->delete();
 
         foreach( $permissions as $permission ) {
             $this->assignPermission( $permission, $team );

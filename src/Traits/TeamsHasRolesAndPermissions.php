@@ -2,6 +2,8 @@
 
 namespace Winavin\Permissions\Traits;
 
+use RuntimeException;
+
 trait TeamsHasRolesAndPermissions
 {
     public function getRoleEnum() : string
@@ -19,14 +21,14 @@ trait TeamsHasRolesAndPermissions
         $modelClass = static::class;
 
         if( !str_starts_with( $modelClass, 'App\\Models\\' ) ) {
-            throw new \RuntimeException( "Model [$modelClass] is not within the expected [App\\Models\\] namespace." );
+            throw new RuntimeException( "Model [$modelClass] is not within the expected [App\\Models\\] namespace." );
         }
 
         $relative  = substr( $modelClass, strlen( 'App\\Models\\' ) );
         $enumClass = 'App\\Enums\\' . $relative . $suffix;
 
         if( !class_exists( $enumClass ) ) {
-            throw new \RuntimeException( "Enum class [$enumClass] not found." );
+            throw new RuntimeException( "Enum class [$enumClass] not found." );
         }
 
         return $enumClass;
