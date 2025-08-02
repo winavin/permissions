@@ -2,9 +2,9 @@
 
 namespace Winavin\Permissions\Console;
 
-class PermissionsMakeModel extends BasePermissionsCommand
+class MakeModel extends BasePermissionsCommand
 {
-    protected $signature   = 'permissions:make-model {name} {--path=}';
+    protected $signature   = 'permissions:make-model {name} {--path=} {--force}';
     protected $description = 'Create roles and permissions model/migration for user side';
 
     protected function process() : void

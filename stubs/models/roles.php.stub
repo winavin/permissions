@@ -1,66 +1,49 @@
 <?php
 
-namespace App\Models;
+namespace {{namespace}};
 
-use BackedEnum;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphPivot;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Winavin\Permissions\Models\Role;
 
-class {{Prefix}}Roles extends MorphPivot
+class {{Prefix}}Roles extends Role
 {
     protected $table = '{{prefix}}_roles';
+
+    protected function casts() : array
+    {
+        return [
+            'role' => $this->resolveRoleEnumCast(),
+        ];
+    }
+
+    protected function resolveRoleEnumCast(): string
+    {
+        // return match ($this->team_type) {
+        //     Organization::class => OrganizationRole::class,
+        //     Division::class     => DivisionRole::class,
+        //     default              => 'string', // fallback
+        // };
+
+        // You can hardcode enum class as above or below code will resolve it dynamically
+        // Delete below code if you want to hardcode enum class
+
+        foreach (config('permissions.models.teams', []) as $teamModel) {
+            if ($this->team_type === $teamModel) {
+
+                // Strip root namespace (e.g., App\Models\) and convert to Enum namespace
+                $enumClass = (string) str($teamModel)->replace("Models", "Enums")->append("Role");
+
+                if (class_exists($enumClass)) {
+                    return $enumClass;
+                }
+            }
+        }
+
+        return 'string'; // fallback if no match found
+    }
 
     public function {{prefix}}(): BelongsTo
     {
         return $this->belongsTo({{Prefix}}::class);
-    }
-
-    public function team(): MorphTo
-    {
-        return $this->morphTo('team');
-    }
-
-    protected  function role($value): Attribute
-    {
-        return Attribute::make(
-            get: fn ($value) => $this->resolveRoleAttribute($value),
-        );
-    }
-
-    private function resolveRoleAttribute($value)
-    {
-        $enumClass = $this->resolveRoleEnumClass();
-
-        if (enum_exists($enumClass)) {
-            return $enumClass::tryFrom($value) ?? $value;
-        }
-
-        return $value;
-    }
-    
-    protected function resolveRoleEnumClass(): string
-    {
-        if ($this->relationLoaded('team') || $this->team) {
-            $team = $this->team;
-            if (method_exists($team, 'getRoleEnum')) {
-                return $team->getRoleEnum();
-            }
-        }
-
-        ${{prefix}} = $this->{{prefix}};
-        if (${{prefix}} && method_exists(${{prefix}}, 'getRoleEnum')) {
-            return ${{prefix}}->getRoleEnum();
-        }
-
-        return 'string';
-    }
-    
-    public function scopeForTeam(Builder $query, $team): Builder
-    {
-        return $query->where('team_type', get_class($team))
-                     ->where('team_id', $team->id);
     }
 }

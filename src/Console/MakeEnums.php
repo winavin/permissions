@@ -2,9 +2,9 @@
 
 namespace Winavin\Permissions\Console;
 
-class PermissionsMakeEnums extends BasePermissionsCommand
+class MakeEnums extends BasePermissionsCommand
 {
-    protected $signature   = 'permissions:make-enums {name} {--path=}';
+    protected $signature   = 'permissions:make-enums {name} {--path=} {--force}';
     protected $description = 'Create enums for team/organization-level roles and permissions';
 
     protected function process() : void

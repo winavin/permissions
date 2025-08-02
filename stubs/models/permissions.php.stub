@@ -1,65 +1,50 @@
 <?php
 
-namespace App\Models;
+namespace {{namespace}};
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphPivot;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Winavin\Permissions\Models\Permission;
 
-class {{Prefix}}Permissions extends MorphPivot
+class {{Prefix}}Permissions extends Permission
 {
     protected $table = '{{prefix}}_permissions';
+
+    protected function casts() : array
+    {
+        return [
+            'permission' => $this->resolvePermissionEnumCast(),
+        ];
+    }
+
+    protected function resolvePermissionEnumCast(): string
+    {
+        // return match ($this->team_type) {
+        //  Organization::class => \App\Enums\OrganizationPermission::class,
+        //  Division::class     => \App\Enums\DivisionPermission::class,
+        //  default             => 'string', // fallback
+        // };
+
+        // You can hardcode enum class as above or below code will resolve it dynamically
+        // Delete below code if you want to hardcode enum class
+
+        foreach (config('permissions.models.teams', []) as $teamModel) {
+            if ($this->team_type === $teamModel) {
+
+                // Strip root namespace (e.g., App\Models\) and convert to Enum namespace
+                $enumClass = (string) str($teamModel)->replace("Models", "Enums")->append("Permission");
+
+                if (class_exists($enumClass)) {
+                    return $enumClass;
+                }
+            }
+        }
+
+        return 'string'; // fallback if no match found
+    }
+
 
     public function {{prefix}}(): BelongsTo
     {
         return $this->belongsTo({{Prefix}}::class);
-    }
-
-    public function team(): MorphTo
-    {
-        return $this->morphTo('team');
-    }
-
-    protected function permission(): Attribute
-    {
-        return Attribute::make(
-            get: fn ($value) => $this->resolvePermissionAttribute($value),
-        );
-    }
-
-    private function resolvePermissionAttribute($value)
-    {
-        $enumClass = $this->resolvePermissionEnumClass();
-
-        if (enum_exists($enumClass)) {
-            return $enumClass::tryFrom($value) ?? $value;
-        }
-
-        return $value;
-    }
-
-    protected function resolvePermissionEnumClass(): string
-    {
-        if ($this->relationLoaded('team') || $this->team) {
-            $team = $this->team;
-            if (method_exists($team, 'getPermissionEnum')) {
-                return $team->getPermissionEnum();
-            }
-        }
-
-        ${{prefix}} = $this->{{prefix}};
-        if (${{prefix}} && method_exists(${{prefix}}, 'getPermissionEnum')) {
-            return ${{prefix}}->getPermissionEnum();
-        }
-
-        return 'string';
-    }
-    
-    public function scopeForTeam(Builder $query, $team): Builder
-    {
-        return $query->where('team_type', get_class($team))
-                     ->where('team_id', $team->id);
     }
 }

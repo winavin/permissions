@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\{{Prefix}};
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,13 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $is_teams_enabled = config('permissions.is_teams_enabled');
+        $is_teams_enabled = config('permissions.teams.is_enabled');
 
-        Schema::create('{{prefix}}_roles', function (Blueprint $table) use (is_teams_enabled) {
+        Schema::create('{{prefix}}_roles', function (Blueprint $table) use ($is_teams_enabled) {
             $table->id();
-            $table->foreignIdFor({{Prefix}}::class, '{{prefix}}_id')->constrained();
+            $table->foreignId('{{prefix}}_id')->constrained();
 
-            if(is_teams_enabled)
+            if($is_teams_enabled)
             {
                 $table->nullableMorphs('team');
             }
@@ -31,7 +30,7 @@ return new class extends Migration
         Schema::create('{{prefix}}_permissions', function (Blueprint $table) use ($is_teams_enabled) {
             $table->id();
 
-            $table->foreignIdFor({{Prefix}}::class, '{{prefix}}_id')->constrained();
+            $table->foreignId('{{prefix}}_id')->constrained();
 
             if($is_teams_enabled)
             {

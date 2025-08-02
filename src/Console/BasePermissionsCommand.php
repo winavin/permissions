@@ -3,6 +3,7 @@
 namespace Winavin\Permissions\Console;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -36,23 +37,36 @@ abstract class BasePermissionsCommand extends Command
         $inputPath = str_replace( '\\', '/', $path );              // Normalize input path
 
         if( !str_starts_with( $inputPath, $appPath ) ) {
-            return 'App'; // fallback to default if path isn't within app/
+            return 'App';
         }
 
         $relative = trim( str_replace( $appPath, '', $inputPath ), '/' );
+
         return $relative ? 'App\\' . str_replace( '/', '\\', $relative ) : 'App';
     }
 
 
     protected function publishStub( string $stubPath, string $targetPath ) : void
     {
-        if( !File::exists( $stubPath ) ) {
-            $this->error( "Stub file not found: $stubPath" );
+
+        $namespace = $this->namespaceFromPath( dirname( $targetPath ) );
+
+        // Skip if file already exists and --force not used
+        if (File::exists($targetPath) && !$this->option('force')) {
+            $this->warn("⚠ Skipped (exists): $targetPath. Use --force to overwrite.");
             return;
         }
 
-        $namespace = $this->namespaceFromPath( dirname( $targetPath ) );
-        $content   = File::get( $stubPath );
+        try {
+
+            $content = File::get( $stubPath );
+
+        } catch( FileNotFoundException $e ) {
+
+            $this->error( "Stub file not found: $stubPath" );
+            return;
+
+        }
 
         $content = str_replace(
             [ '{{Prefix}}', '{{prefix}}', '{{namespace}}' ],

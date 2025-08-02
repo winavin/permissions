@@ -7,99 +7,266 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
-use RuntimeException;
-use Winavin\Permissions\Exceptions\InvalidPermissionException;
-use Winavin\Permissions\Exceptions\InvalidRoleException;
+use Winavin\Permissions\Contracts\TeamInterface;
+use function PHPUnit\Framework\isNull;
 
 trait HasRolesAndPermissions
 {
-    protected function getRoleEnum( $team ) : string
+    public function roleRelation(): HasMany
     {
-        return $team->getRoleEnum();
+        return $this->hasMany( $this->getRollClass())->with('team');
     }
 
-    protected function getPermissionEnum( $team ) : string
+    public function permissionRelation(): HasMany
     {
-        return $team->getPermissionEnum();
+        return $this->hasMany( $this->getPermissionClass())->with('team');
     }
 
-    protected function getRoleClass() : string
+    public function roles( ?TeamInterface $team = null) : Collection
     {
-        return $this->resolveModelClass( 'Roles' );
+        return Cache::rememberForever(
+            $this->getCacheKey( $team, 'roles' ),
+            fn() => $this->roleRelation()->forTeam($team)->pluck('role'),
+        );
     }
 
+    public function directPermissions( ?TeamInterface $team = null ) : Collection
+    {
+        return Cache::rememberForever(
+            $this->getCacheKey( $team, 'direct-permissions' ),
+            fn() => $this->permissionRelation()->forTeam($team)->pluck('permission'),
+        );
+    }
+
+    public function permissionsThroughRoles( ?TeamInterface $team = null ) : Collection
+    {
+        return $this->roles( $team )
+                    ->filter( fn( $role ) => method_exists( $role, 'permissions' ) )
+                    ->flatMap( fn( $role ) => $role->permissions() )
+                    ->unique()
+                    ->values();
+    }
+
+    public function permissions( ?TeamInterface $team = null ) : Collection
+    {
+        return Cache::rememberForever(
+            $this->getCacheKey( $team, 'permissions' ),
+            fn()
+                => collect()
+                ->merge( $this->directPermissions( $team ) )
+                ->merge( $this->permissionsThroughRoles( $team ) )
+                ->unique()
+                ->values(),
+        );
+    }
+
+    public function hasRole( string|BackedEnum $role, ?TeamInterface $team = null ) : bool
+    {
+        $role = $this->resolveEnumValue($role);
+
+        return Cache::rememberForever(
+            $this->getCacheKey( $team, 'hasRole'),
+            fn() => $this->roles( $team )->contains( $role ),
+        );
+    }
+
+    private function checkRoles( array $roles, ?TeamInterface $team = null, bool $requireAll = false ) : bool
+    {
+        if( empty( $roles ) ) {
+            return $this->roles( $team )->isNotEmpty();
+        }
+
+        $roles = collect( $roles );
+
+        return $requireAll
+            ? $roles->every( fn( $role ) => $this->hasRole( $role, $team ) )
+            : $roles->contains( fn( $role ) => $this->hasRole( $role, $team ) );
+    }
+
+    public function hasAnyRole( array $roles = [], ?TeamInterface $team = null ) : bool
+    {
+        return $this->checkRoles( $roles, $team );
+    }
+
+    public function hasAllRoles( array $roles, ?TeamInterface $team = null ) : bool
+    {
+        return $this->checkRoles( $roles, $team, true );
+    }
+
+    private function checkPermissions( array $permissions, ?TeamInterface $team = null, bool $requireAll = false ) : bool
+    {
+        if( empty( $permissions ) ) {
+            return $this->permissions( $team )->isNotEmpty();
+        }
+
+        $permissions = collect( $permissions );
+
+        return $requireAll
+            ? $permissions->every( fn( $permission ) => $this->hasPermission( $permission, $team ) )
+            : $permissions->contains( fn( $permission ) => $this->hasPermission( $permission, $team ) );
+    }
+
+
+    public function hasPermission( string|BackedEnum $permission, ?TeamInterface $team = null ) : bool
+    {
+        $permission = $this->resolveEnumValue($permission);
+
+        return Cache::rememberForever(
+            $this->getCacheKey( $team, 'hasPermission', $permission  ),
+            fn() => $this->permissions( $team )->contains( $permission ),
+        );
+    }
+
+    public function hasAnyPermission( array $permissions = [], ?TeamInterface $team = null ) : bool
+    {
+        return $this->checkPermissions( $permissions, $team );
+    }
+
+    public function hasAllPermissions( array $permissions, ?TeamInterface $team = null ) : bool
+    {
+        return $this->checkPermissions( $permissions, $team, true );
+    }
+
+    public function isAbleTo( string|BackedEnum $permission, ?TeamInterface $team = null ) : bool
+    {
+        return $this->hasPermission( $permission, $team );
+    }
+
+    public function assignRole( BackedEnum $role, ?TeamInterface $team = null, ?Carbon $expiresAt = null )
+    {
+        $this->forgetRolesCacheFor( $team );
+
+        return $this->roleRelation()
+                    ->firstOrCreate([
+                                        'role'       => $role->value,
+                                        'team_type'  => isNull($team) ? get_class( $team ): null,
+                                        'team_id'    => $team?->getKey(),
+                                        'expires_at' => $expiresAt,
+                                    ]);
+    }
+
+    public function addRole( BackedEnum $role, ?TeamInterface $team = null, ?Carbon $expiresAt = null )
+    {
+        return $this->assignRole( $role, $team, $expiresAt );
+    }
+
+    public function assignPermission( BackedEnum $permission, ?TeamInterface $team = null, ?Carbon $expiresAt = null )
+    {
+        $this->forgetPermissionsCacheFor( $team );
+
+        return $this->permissionRelation()->firstOrCreate( [
+                                                                'permission' => $permission->value,
+                                                                'team_type'  => isNull($team) ? get_class( $team ): null,
+                                                                'team_id'    => $team->getKey(),
+                                                                'expires_at' => $expiresAt,
+                                                            ] );
+    }
+
+    public function addPermission( BackedEnum $permission, ?TeamInterface $team = null, ?Carbon $expiresAt = null )
+    {
+        return $this->assignPermission( $permission, $team, $expiresAt );
+    }
+
+    public function removeRole( BackedEnum $role, ?TeamInterface $team = null )
+    {
+        $this->forgetRolesCacheFor( $team );
+
+        return $this->roleRelation()
+                    ->forTeam( $team )
+                    ->where( 'role', $role->value )
+                    ->delete();
+    }
+
+    public function removePermission( BackedEnum $permission, ?TeamInterface $team = null )
+    {
+        $this->forgetPermissionsCacheFor( $team );
+
+        return $this->permissionRelation()
+                    ->forTeam( $team )
+                    ->where( 'permission', $permission->value )
+                    ->delete();
+    }
+
+    public function syncRoles( array $roles, ?TeamInterface $team = null ) : void
+    {
+        $this->forgetRolesCacheFor( $team );
+
+        $this->roleRelation()->forTeam( $team )->delete();
+
+        foreach( $roles as $role ) {
+            $this->assignRole( $role, $team );
+        }
+    }
+
+    public function syncPermissions( array $permissions, ?TeamInterface $team = null ) : void
+    {
+        $this->forgetPermissionsCacheFor( $team );
+
+        $this->permissionRelation()->forTeam( $team )->delete();
+
+        foreach( $permissions as $permission ) {
+            $this->assignPermission( $permission, $team );
+        }
+    }
+
+    public function teams()
+    {
+        $grouped = $this->roleRelation
+                        ->groupBy( function( $role ) {
+                            return $role->team_type . ':' . $role->team_id;
+                        } );
+
+        return $grouped->map( function( $roles ) {
+
+            $team = $roles->first()->team;
+
+            $team->setAttribute( 'roles', $roles->map( function( $role ) {
+                return [
+                    'name'       => $role->role,
+                    'expires_at' => $role->expires_at,
+                ];
+            } )->values() );
+
+            return $team;
+
+        } )->values();
+    }
+
+    // Can be replaced in parent class
+    protected function getRollClass() : string
+    {
+        return get_class($this). 'Roles';
+    }
+
+    // Can be replaced in parent class
     protected function getPermissionClass() : string
     {
-        return $this->resolveModelClass( 'Permissions');
+        return get_class($this). 'Permissions';
     }
 
-    protected function getOwnerForeignKey() : string
-    {
-        return strtolower( class_basename( static::class ) ) . '_id';
-    }
+    /*
+     * Cache Related Private Methods
+     */
 
-    private function resolveModelClass( string $suffix ) : string
-    {
-        return $this->resolveClass( 'App\\Models', 'App\\Models', $suffix );
-    }
-
-    private function resolveClass( string $fromNamespace, string $toNamespace, string $suffix, $team = null ) : string
-    {
-        $modelClass = get_class( $team ?? $this );
-
-        if( !str_starts_with( $modelClass, $fromNamespace ) ) {
-            throw new RuntimeException( "Model [$modelClass] is not within expected namespace [$fromNamespace]." );
-        }
-
-        $relativeClass = substr( $modelClass, strlen( $fromNamespace ) );
-        $class         = rtrim( $toNamespace, '\\' ) . $relativeClass . $suffix;
-
-        if( !class_exists( $class ) ) {
-            throw new RuntimeException( "Class [$class] not found." );
-        }
-
-        return $class;
-    }
-
-    private function resolveEnumValue( string|BackedEnum $value ) : string|int
-    {
-        return $value instanceof BackedEnum ? $value->value : $value;
-    }
-
-    private function validateEnumForTeam( BackedEnum|string $value, mixed $team, string $type ) : void
-    {
-        $method = $type === 'role' ? 'getRoleEnum' : 'getPermissionEnum';
-
-        $expectedEnum = method_exists( $team, $method ) ? $team->{$method}() : null;
-
-        if( $expectedEnum && $value::class !== $expectedEnum ) {
-            $enumClass = $value::class;
-            $teamClass = get_class( $team );
-
-            if( $type === 'role' ) {
-                throw new InvalidRoleException( $enumClass, $teamClass );
-            } else {
-                throw new InvalidPermissionException( $enumClass, $teamClass );
-            }
-        }
-    }
-
-    private function generateCacheKey( $team, string $type, string|int|null $value = null ) : string
+    private function getCacheKey( ?TeamInterface $team, string $type, string|int|null $value = null ) : string
     {
         $userClass = str_replace( '\\', '.', get_class( $this ) );
         $userId    = $this->id;
 
-        $teamClass = str_replace( '\\', '.', get_class( $team ) );
-        $teamId    = $team->id;
+        if($team)
+        {
+            $teamClass = str_replace( '\\', '.', get_class( $team ) );
+            $teamId    = $team->getKey();
 
+        }
         $value = is_null( $value ) ? '' : "-" . $value;
 
-        return "$userClass-$userId-$teamClass-$teamId-$type-$value";
+        return (isset($teamClass) ? $teamClass.'-': '').(isset($teamId) ? $teamId.'-': '')."$userClass-$userId-$type$value";
     }
 
     private function forgetCache( $team, string $type ) : void
     {
-        $key = $this->generateCacheKey( $team, $type );
+        $key = $this->getCacheKey( $team, $type );
         Cache::forget( $key );
     }
 
@@ -120,248 +287,8 @@ trait HasRolesAndPermissions
         $this->forgetCacheFor( $team, [ 'permissions', 'hasPermission' ] );
     }
 
-    public function roleRelations() : HasMany
+    private function resolveEnumValue(string|BackedEnum $value): string
     {
-        return $this->hasMany( $this->getRoleClass(), $this->getOwnerForeignKey() );
-    }
-
-    public function permissionRelations() : HasMany
-    {
-        return $this->hasMany( $this->getPermissionClass(), $this->getOwnerForeignKey() );
-    }
-
-    public function roles( $team ) : Collection
-    {
-        return Cache::rememberForever(
-            $this->generateCacheKey( $team, 'roles' ),
-            fn()
-                => $this->getEnumCollection(
-                relationMethod: 'roleRelations',
-                team          : $team,
-                column        : 'role',
-                enumResolver  : fn( $team ) => $this->getRoleEnum( $team ),
-            )
-        );
-    }
-
-    public function directPermissions( $team ) : Collection
-    {
-        return $this->getEnumCollection(
-            relationMethod: 'permissionRelations',
-            team          : $team,
-            column        : 'permission',
-            enumResolver  : fn( $team ) => $this->getPermissionEnum( $team ),
-        );
-    }
-
-    private function getEnumCollection(
-        string   $relationMethod,
-                 $team,
-        string   $column,
-        callable $enumResolver,
-    ): Collection {
-
-        $query     = $this->{$relationMethod}( $team );
-        $values    = $query->forTeam( $team )->pluck( $column );
-        $enumClass = $enumResolver( $team );
-
-        return $values->map( fn( $value ) => $enumClass::tryFrom( $value ) ?? null )->filter();
-    }
-
-    public function permissionsThroughRoles( $team ) : Collection
-    {
-        return $this->roles( $team )
-                    ->filter( fn( $role ) => method_exists( $role, 'permissions' ) )
-                    ->flatMap( fn( $role ) => $role->permissions() )
-                    ->unique()
-                    ->values();
-    }
-
-    public function permissions( $team ) : Collection
-    {
-        return Cache::rememberForever(
-            $this->generateCacheKey( $team, 'permissions' ),
-            fn()
-                => collect()
-                ->merge( $this->directPermissions( $team ) )
-                ->merge( $this->permissionsThroughRoles( $team ) )
-                ->unique()
-                ->values()
-        );
-    }
-
-    public function hasRole( string|BackedEnum $role, $team ) : bool
-    {
-        $this->validateEnumForTeam( $role, $team, 'role' );
-
-        return Cache::rememberForever(
-            $this->generateCacheKey( $team, 'hasRole', $this->resolveEnumValue( $role ) ),
-            fn() => $this->roles( $team )->contains( $role )
-        );
-    }
-
-    private function checkRoles( array $roles, $team, bool $requireAll = false ) : bool
-    {
-        if( empty( $roles ) ) {
-            return $this->roles( $team )->isNotEmpty();
-        }
-
-        $roles = collect( $roles );
-
-        return $requireAll
-            ? $roles->every( fn( $role ) => $this->hasRole( $role, $team ) )
-            : $roles->contains( fn( $role ) => $this->hasRole( $role, $team ) );
-    }
-
-    public function hasAnyRole( array $roles = [], $team ) : bool
-    {
-        return $this->checkRoles( $roles, $team );
-    }
-
-    public function hasAllRoles( array $roles, $team ) : bool
-    {
-        return $this->checkRoles( $roles, $team, true );
-    }
-
-    private function checkPermissions( array $permissions, $team, bool $requireAll = false ) : bool
-    {
-        if( empty( $permissions ) ) {
-            return $this->permissions( $team )->isNotEmpty();
-        }
-
-        $permissions = collect( $permissions );
-
-        return $requireAll
-            ? $permissions->every( fn( $permission ) => $this->hasPermission( $permission, $team ) )
-            : $permissions->contains( fn( $permission ) => $this->hasPermission( $permission, $team ) );
-    }
-
-
-    public function hasPermission( string|BackedEnum $permission, $team ) : bool
-    {
-        $this->validateEnumForTeam( $permission, $team, 'permission' );
-
-        return Cache::rememberForever(
-            $this->generateCacheKey( $team, 'hasPermission', $this->resolveEnumValue( $permission ) ),
-            fn() => $this->permissions( $team )->contains( $permission )
-        );
-    }
-
-    public function hasAnyPermission( array $permissions = [], $team ) : bool
-    {
-        return $this->checkPermissions( $permissions, $team );
-    }
-
-    public function hasAllPermissions( array $permissions, $team ) : bool
-    {
-        return $this->checkPermissions( $permissions, $team, true );
-    }
-
-    public function isAbleTo( string|BackedEnum $permission, $team ) : bool
-    {
-        return $this->hasPermission( $permission, $team );
-    }
-
-    public function assignRole( BackedEnum $role, $team, ?Carbon $expiresAt = null )
-    {
-        $this->validateEnumForTeam( $role, $team, 'role' );
-
-        $this->forgetRolesCacheFor( $team );
-
-        return $this->roleRelations()->firstOrCreate( [
-                                                                 'role'       => $role->value,
-                                                                 'team_type'  => get_class( $team ),
-                                                                 'team_id'    => $team->id,
-                                                                 'expires_at' => $expiresAt,
-                                                             ] );
-    }
-
-    public function addRole( BackedEnum $role, $team, ?Carbon $expiresAt = null )
-    {
-        return $this->assignRole( $role, $team, $expiresAt );
-    }
-
-    public function assignPermission( BackedEnum $permission, $team, ?Carbon $expiresAt = null )
-    {
-        $this->validateEnumForTeam( $permission, $team, 'permission' );
-
-        $this->forgetPermissionsCacheFor( $team );
-
-        return $this->permissionRelations()->firstOrCreate( [
-                                                                       'permission' => $permission->value,
-                                                                       'team_type'  => get_class( $team ),
-                                                                       'team_id'    => $team->id,
-                                                                       'expires_at' => $expiresAt,
-                                                                   ] );
-    }
-
-    public function addPermission( BackedEnum $permission, $team, ?Carbon $expiresAt = null )
-    {
-        return $this->assignPermission( $permission, $team, $expiresAt );
-    }
-
-    public function removeRole( BackedEnum $role, $team )
-    {
-        $this->forgetRolesCacheFor( $team );
-
-        return $this->roleRelations()
-                    ->forTeam( $team )
-                    ->where( 'role', $role->value )
-                    ->delete();
-    }
-
-    public function removePermission( BackedEnum $permission, $team )
-    {
-        $this->forgetPermissionsCacheFor( $team );
-
-        return $this->permissionRelations()
-                    ->forTeam( $team )
-                    ->where( 'permission', $permission->value )
-                    ->delete();
-    }
-
-    public function syncRoles( array $roles, $team ) : void
-    {
-        $this->forgetRolesCacheFor( $team );
-
-        $this->roleRelations()->forTeam( $team )->delete();
-
-        foreach( $roles as $role ) {
-            $this->assignRole( $role, $team );
-        }
-    }
-
-    public function syncPermissions( array $permissions, $team ) : void
-    {
-        $this->forgetPermissionsCacheFor( $team );
-
-        $this->permissionRelations()->forTeam( $team )->delete();
-
-        foreach( $permissions as $permission ) {
-            $this->assignPermission( $permission, $team );
-        }
-    }
-
-    public function teams()
-    {
-        $grouped = $this->roleRelations()->with( 'team' )->get()
-                        ->groupBy( function( $role ) {
-                            return $role->team_type . ':' . $role->team_id;
-                        } );
-
-        return $grouped->map( function( $roles ) {
-
-            $team = $roles->first()->team;
-
-            $team->setAttribute( 'roles', $roles->map( function( $role ) {
-                return [
-                    'name'       => $role->role,
-                    'expires_at' => $role->expires_at,
-                ];
-            } )->values() );
-
-            return $team;
-
-        } )->values();
+        return $value instanceof BackedEnum ? $value->value : $value;
     }
 }

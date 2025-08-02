@@ -4,7 +4,7 @@ namespace {{namespace}};
 
 enum {{Prefix}}Permission: string
 {
-    case VIEW = '{{prefix}}.view';
+    case VIEW   = '{{prefix}}.view';
     case CREATE = '{{prefix}}.create';
     case UPDATE = '{{prefix}}.update';
     case DELETE = '{{prefix}}.delete';
