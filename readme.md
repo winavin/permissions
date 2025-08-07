@@ -53,7 +53,7 @@ Install the package using Composer:
 composer require winavin/permissions
 ```
 
-Optionally, publish the configuration file:
+Publish the configuration file:
 
 ```bash
 php artisan vendor:publish --tag="permissions.config"
@@ -61,6 +61,43 @@ php artisan vendor:publish --tag="permissions.config"
 
 ## Setup
 
+### 1. Publish Configuration
+```bash
+php artisan vendor:publish --tag="permissions.config"
+```
+
+### 2. Add your auth models in 'users' and 'teams' arrays in the config file
+```php
+"models" => [
+        /*
+         * Each of below models will authorise with roles and permission at global level and at team level.
+         */
+        "users" => [
+            \App\Models\OtherNamespace\Admin::class,
+            \App\Models\User::class,
+        ],
+
+        /*
+         * Each of below models will have roles and permissions for their members at team level.
+         */
+        "teams" => [
+            \App\Models\Organization::class,
+            \App\Models\OtherNamespace\Division::class,
+        ]
+    ]
+```
+
+### 3. Now run install coammand to create the necessary tables and models:
+
+```bash
+php artisan permissions:install
+````
+
+This will create the necessary database migrations, Pivot models, and enum classes for your user models and teams.
+
+
+
+## Alternate Option
 ### 1. Publish Migration & Model Classes
 
 Use the following command to generate the database migration and model scaffolding for a user model:
@@ -68,10 +105,10 @@ Use the following command to generate the database migration and model scaffoldi
 ```bash
 php artisan permissions:make-model
 OR
-php artisan permissions:make-model {User/Admin Model} --path={Team}
+php artisan permissions:make-model {User Model} --path={Team}
 ```
 
-Replaces {User/Admin Model} with your model prefix (e.g. User, Customer, Employee) whichever you want to assign roles
+Replaces {User Model} with your model prefix (e.g. User, Customer, Employee) whichever you want to assign roles
 and permissions.
 
 This will publish following files
@@ -212,6 +249,9 @@ You can overwrite following methods in trait as per your need.
 - You should always use the provided methods (```assignRole```, ```addRole```, ```assignPermission```,
   ```addPermission```, ```removeRole```, ```removePermission```) to modify roles and permissions instead of manipulating
   database records manually.
+
+## Contributing
+If you want to contribute to this package, feel free to submit a pull request or open an issue on GitHub.
 
 ## License
 

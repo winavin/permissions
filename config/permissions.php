@@ -18,8 +18,8 @@ return [
          * Each of below models will have roles and permissions for their members at team level.
          */
         "teams" => [
-            \App\Models\Organization::class,
-            \App\Models\Division::class,
+//            \App\Models\Organization::class,
+//            \App\Models\Division::class,
         ]
     ]
 ];
