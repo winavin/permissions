@@ -14,7 +14,7 @@ class InstallCommand extends Command
     {
         $this->generate('users', 'permissions:make-model');
 
-        if(config('permissions.is_teams_enabled', false)) {
+        if(config('permissions.teams/is_enabled', false)) {
             $this->generate('teams', 'permissions:make-enums');
         } else {
             $this->info("Teams are not enabled in your configuration. Skipping team model generation.");
