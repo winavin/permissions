@@ -1,0 +1,4 @@
+/vendor
+/composer.lock
+/.pest
+/phpunit.xml.bak

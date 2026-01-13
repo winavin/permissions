@@ -14,11 +14,19 @@ class HasAllRoles
      *
      * @param Closure(Request): (Response) $next
      */
-    public function handle( Request $request, Closure $next, string|array $roles, $team = null ) : Response
+    public function handle(Request $request, Closure $next, string|array $roles, $team = null): Response
     {
-        if( !Auth::user()?->hasAllRoles( $roles, $team ) ) {
-            abort( 403, 'You do not have the required role(s) to access this resource.' );
+        if (is_string($roles)) {
+            $roles = explode('|', $roles);
         }
-        return $next( $request );
+
+        if (!$team instanceof \Winavin\Permissions\Contracts\TeamInterface) {
+            $team = null;
+        }
+
+        if (!Auth::user()?->hasAllRoles($roles, $team)) {
+            abort(403, 'You do not have the required role(s) to access this resource.');
+        }
+        return $next($request);
     }
 }
