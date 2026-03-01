@@ -1,0 +1,71 @@
+﻿
+   FAIL  Tests\Feature\CommandTest
+  Γ¿» it can make enums with default structure                        0.29s  
+  Γ£ô it can make enums with subfolder structure                      0.03s  
+  Γ£ô it can make model with default structure                        0.03s  
+  Γ£ô it can make model with subfolder structure                      0.03s  
+  Γ¿» it installs with multiple user models and multiple team models  0.02s  
+  ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ  
+   FAILED  Tests\Feature\CommandTest > it can make enums with default sΓÇª   
+  Expected: <?php\r\n
+  \r\n
+namespace App\Enums;\r\n
+\r\n
+use Winavin\Permissions\Traits\Enums\EnumHasPermissions;\r\n
+\r\n
+enum DepartmentRole : string\r\n
+{\r\n
+    use EnumHasPermissions;\r\n
+    case ADMINISTRATOR = 'department.administrator';\r\n
+\r\n
+    public function permissions(): array\r\n
+    {\r\n
+        return match ($this) {\r\n
+            self::ADMINISTRATOR => [\r\n
+                DepartmentPermission::VIEW,\r\n
+                DepartmentPermission::CREATE,\r\n
+                DepartmentPermission::UPDATE,\r\n
+                DepartmentPermission::DELETE,\r\n
+            ],\r\n
+\r\n
+            default => []\r\n
+        };\r\n
+    }\r\n
+}
+
+  To contain: enum DepartmentRole: string
+
+  at tests\Feature\CommandTest.php:34
+     30Γûò     $this->assertFileExists(app_path('Enums/DepartmentPermission.php'));
+     31Γûò 
+     32Γûò     $content = File::get(app_path('Enums/DepartmentRole.php'));
+     33Γûò     expect($content)->toContain('namespace App\Enums;');
+  Γ₧£  34Γûò     expect($content)->toContain('enum DepartmentRole: string');
+     35Γûò });
+     36Γûò 
+     37Γûò it('can make enums with subfolder structure', function () {
+     38Γûò     $this->artisan('permissions:make-enums', [
+
+  1   tests\Feature\CommandTest.php:34
+
+  ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ  
+   FAILED  Tests\Feature\CommandTest > it installs with multiple user mΓÇª   
+  Failed asserting that file "C:\xampp\htdocs\packages\packages\winavin\permissions\vendor\orchestra\testbench-core\laravel\app\Models/UserRoles.php" exists.
+
+  at tests\Feature\CommandTest.php:103
+     99Γûò     $this->artisan('permissions:install', ['--force' => true])
+    100Γûò         ->assertExitCode(0);
+    101Γûò 
+    102Γûò     // Assert User Models got their migrations and models
+  Γ₧£ 103Γûò     $this->assertFileExists(app_path('Models/UserRoles.php'));
+    104Γûò     $this->assertFileExists(app_path('Models/UserPermissions.php'));
+    105Γûò 
+    106Γûò     $this->assertFileExists(app_path('Models/Admin/SuperAdminRoles.php'));
+    107Γûò     $this->assertFileExists(app_path('Models/Admin/SuperAdminPermissions.php'));
+
+  1   tests\Feature\CommandTest.php:103
+
+
+  Tests:    2 failed, 3 passed (21 assertions)
+  Duration: 0.64s
+

@@ -7,15 +7,25 @@ use Illuminate\Support\Str;
 
 class InstallCommand extends Command
 {
-    protected $signature   = 'permissions:install {--force}';
+    protected $signature = 'permissions:install {--force}';
     protected $description = 'Generate necessary scaffolding as per configuration';
 
     public function handle(): void
     {
-        $this->generate('users', 'permissions:make-model');
+        $modelsConfig = config('permissions.models', []);
+        $users = array_keys($modelsConfig);
 
-        if(config('permissions.teams.is_enabled', false)) {
-            $this->generate('teams', 'permissions:make-enums');
+        $this->generate('users', 'permissions:make-model', $users);
+
+        if (config('permissions.teams.is_enabled', false)) {
+            $teams = [];
+            foreach ($modelsConfig as $userTeams) {
+                if (is_array($userTeams)) {
+                    $teams = array_merge($teams, $userTeams);
+                }
+            }
+            $teams = array_unique($teams);
+            $this->generate('teams', 'permissions:make-enums', $teams);
         } else {
             $this->info("Teams are not enabled in your configuration. Skipping team model generation.");
         }
@@ -23,9 +33,9 @@ class InstallCommand extends Command
         $this->info("✅ Permissions scaffolding installed successfully!");
     }
 
-    protected function generate(string $type, string $command): void
+    protected function generate(string $type, string $command, array $models = []): void
     {
-        foreach (config("permissions.models.$type", []) as $model) {
+        foreach ($models as $model) {
             if (!class_exists($model)) {
                 $this->error(ucfirst($type) . " model {$model} does not exist. Please check your configuration.");
                 return;
@@ -34,11 +44,11 @@ class InstallCommand extends Command
             $name = class_basename($model);
 
             $path = Str::of($model)
-                       ->beforeLast($name)
-                       ->after('Models')
-                       ->trim('\\')
-                       ->replaceLast('\\', '/')
-                       ->toString();
+                ->beforeLast($name)
+                ->after('Models')
+                ->trim('\\')
+                ->replaceLast('\\', '/')
+                ->toString();
 
             $this->call($command, [
                 'name' => $name,

@@ -6,20 +6,13 @@ return [
     ],
 
     "models" => [
-        /*
-         * Each of the below models will authorize with roles and permission at global level and at team level.
-         */
-        "users" => [
-            \App\Models\User::class,
-//            \App\Models\Admin::class,
+            \App\Models\User::class=> [
+                // \App\Models\Team1::class,
+                // \App\Models\Team2::class,
+            ]   ,
+            // \App\Models\Admin::class=> [
+            //     \App\Models\Team3::class,
+            //     \App\Models\Team4::class,
+            // ],
         ],
-
-        /*
-         * Each of below models will have roles and permissions for their members at team level.
-         */
-        "teams" => [
-//            \App\Models\Team1::class,
-//            \App\Models\Team2::class,
-        ]
-    ]
 ];

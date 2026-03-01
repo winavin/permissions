@@ -27,7 +27,15 @@ class {{Prefix}}Roles extends Role
         // You can hardcode enum class as above or below code will resolve it dynamically
         // Delete below code if you want to hardcode enum class
 
-        foreach (config('permissions.models.teams', []) as $teamModel) {
+        $teamModels = [];
+        foreach (config('permissions.models', []) as $userTeams) {
+            if (is_array($userTeams)) {
+                $teamModels = array_merge($teamModels, $userTeams);
+            }
+        }
+        $teamModels = array_unique($teamModels);
+
+        foreach ($teamModels as $teamModel) {
             if ($this->team_type === $teamModel) {
 
                 // Strip root namespace (e.g., App\Models\) and convert to Enum namespace

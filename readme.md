@@ -66,25 +66,22 @@ php artisan vendor:publish --tag="permissions.config"
 php artisan vendor:publish --tag="permissions.config"
 ```
 
-### 2. Add your auth models in 'users' and 'teams' arrays in the config file
+### 2. Configure your models and teams in the config file
 ```php
-"models" => [
-        /*
-         * Each of below models will authorise with roles and permission at global level and at team level.
-         */
-        "users" => [
-            \App\Models\OtherNamespace\Admin::class,
-            \App\Models\User::class,
-        ],
+    "teams" => [
+        "is_enabled" => true,
+    ],
 
-        /*
-         * Each of below models will have roles and permissions for their members at team level.
-         */
-        "teams" => [
-            \App\Models\Organization::class,
-            \App\Models\OtherNamespace\Division::class,
-        ]
-    ]
+    "models" => [
+            \App\Models\User::class=> [
+                // \App\Models\Team1::class,
+                // \App\Models\Team2::class,
+            ]   ,
+            // \App\Models\Admin::class=> [
+            //     \App\Models\Team3::class,
+            //     \App\Models\Team4::class,
+            // ],
+        ],
 ```
 
 ### 3. Now run install coammand to create the necessary tables and models:
@@ -203,6 +200,58 @@ For readability, you may also use:
 ```php
 $user->isAbleTo($permission);
 ```
+
+You can also check for multiple roles or permissions:
+
+```php
+// Check if user has ANY of the given roles
+$user->hasAnyRole([$role1, $role2]);
+$user->hasAnyRole([$role1, $role2], $team);
+
+// Check if user has ALL of the given roles
+$user->hasAllRoles([$role1, $role2]);
+$user->hasAllRoles([$role1, $role2], $team);
+
+// Check if user has ANY of the given permissions
+$user->hasAnyPermission([$permission1, $permission2]);
+$user->hasAnyPermission([$permission1, $permission2], $team);
+
+// Check if user has ALL of the given permissions
+$user->hasAllPermissions([$permission1, $permission2]);
+$user->hasAllPermissions([$permission1, $permission2], $team);
+```
+
+### Retrieving Roles and Permissions
+
+You can retrieve a user's assigned roles and permissions. These methods return a Laravel `Collection` and accept an optional `$team` parameter to limit results to a specific team:
+
+```php
+// Get all roles assigned to the user
+$user->roles(); 
+$user->roles($team);
+
+// Get all permissions (both direct and through roles)
+$user->permissions();
+$user->permissions($team);
+
+// Get only directly assigned permissions
+$user->directPermissions();
+$user->directPermissions($team);
+
+// Get permissions that are inherited through assigned roles
+$user->permissionsThroughRoles();
+$user->permissionsThroughRoles($team);
+```
+
+### Retrieving Teams
+
+If a user belongs to any teams via roles (or direct permissions mapped through roles), you can retrieve them:
+
+```php
+// Get all distinct teams the user is assigned a role in
+$user->teams();
+```
+
 
 ### Syncing Roles and Permissions
 

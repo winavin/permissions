@@ -35,7 +35,7 @@ class TestCase extends Orchestra
         $migration->up();
         */
 
-        $app['config']->set('permissions.models.users', [User::class]);
+        $app['config']->set('permissions.models', [User::class => []]);
     }
 
     protected function defineDatabaseMigrations()
@@ -65,6 +65,12 @@ class TestCase extends Orchestra
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
+
+        $this->app['db']->connection()->getSchemaBuilder()->create('teams', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
     }
 }
 
@@ -91,4 +97,10 @@ class UserPermissions extends \Winavin\Permissions\Models\Permission
     protected $casts = [
         'permission' => \Winavin\Permissions\Tests\Enums\TestPermission::class
     ];
+}
+
+class Team extends \Illuminate\Database\Eloquent\Model implements \Winavin\Permissions\Contracts\TeamInterface
+{
+    protected $table = 'teams';
+    protected $guarded = [];
 }

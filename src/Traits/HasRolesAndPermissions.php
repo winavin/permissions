@@ -210,6 +210,9 @@ trait HasRolesAndPermissions
     public function teams()
     {
         $grouped = $this->roleRelation
+            ->filter(function ($role) {
+                return !is_null($role->team_type) && !is_null($role->team_id);
+            })
             ->groupBy(function ($role) {
                 return $role->team_type . ':' . $role->team_id;
             });
@@ -218,16 +221,18 @@ trait HasRolesAndPermissions
 
             $team = $roles->first()->team;
 
-            $team->setAttribute('roles', $roles->map(function ($role) {
-                return [
-                    'name' => $role->role,
-                    'expires_at' => $role->expires_at,
-                ];
-            })->values());
+            if ($team) {
+                $team->setAttribute('roles', $roles->map(function ($role) {
+                    return [
+                        'name' => $role->role,
+                        'expires_at' => $role->expires_at,
+                    ];
+                })->values());
+            }
 
             return $team;
 
-        })->values();
+        })->filter()->values();
     }
 
     // Can be replaced in parent class
