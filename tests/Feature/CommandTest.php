@@ -135,3 +135,55 @@ it('installs with multiple user models and multiple team models', function () {
     $this->assertFileExists(app_path('Enums/OrganizationRole.php'));
     $this->assertFileExists(app_path('Enums/BranchRole.php'));
 });
+
+it('can uninstall generated models, enums and migrations', function () {
+    // Scaffold test models
+    File::ensureDirectoryExists(app_path('Models/Admin'));
+
+    $dummyClasses = [
+        'Models/User.php' => '<?php namespace App\Models; class User {}',
+        'Models/Team.php' => '<?php namespace App\Models; class Team {}',
+    ];
+
+    foreach ($dummyClasses as $path => $content) {
+        if (!File::exists(app_path($path))) {
+            File::put(app_path($path), $content);
+            require_once app_path($path);
+        }
+    }
+
+    Config::set('permissions.teams.is_enabled', true);
+    Config::set('permissions.models', [
+        'App\Models\User' => [
+            'App\Models\Team',
+        ],
+    ]);
+
+    $this->artisan('permissions:install', ['--force' => true])
+        ->assertExitCode(0);
+
+    // Verify they exist
+    $this->assertFileExists(app_path('Models/UserRoles.php'));
+    $this->assertFileExists(app_path('Enums/TeamRole.php'));
+
+    // Check migrations
+    $migrations = File::files(database_path('migrations'));
+    $migrationExists = collect($migrations)->contains(function ($file) {
+        return str_contains($file->getFilename(), '_create_user_roles_permissions_tables.php');
+    });
+    expect($migrationExists)->toBeTrue();
+
+    // Now run uninstall
+    $this->artisan('permissions:uninstall')
+        ->assertExitCode(0);
+
+    // Assert files are deleted
+    $this->assertFileDoesNotExist(app_path('Models/UserRoles.php'));
+    $this->assertFileDoesNotExist(app_path('Enums/TeamRole.php'));
+
+    $migrations = File::files(database_path('migrations'));
+    $migrationExists = collect($migrations)->contains(function ($file) {
+        return str_contains($file->getFilename(), '_create_user_roles_permissions_tables.php');
+    });
+    expect($migrationExists)->toBeFalse();
+});
