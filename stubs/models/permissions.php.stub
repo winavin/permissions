@@ -28,9 +28,14 @@ class {{Prefix}}Permissions extends Permission
         // Delete below code if you want to hardcode enum class
 
         $teamModels = [];
-        foreach (config('permissions.models', []) as $userTeams) {
-            if (is_array($userTeams)) {
-                $teamModels = array_merge($teamModels, $userTeams);
+        foreach (config('permissions.models', []) as $key => $value) {
+            if (is_string($key)) {
+                $teamModels[] = $key;
+            }
+            if (is_string($value)) {
+                $teamModels[] = $value;
+            } elseif (is_array($value)) {
+                $teamModels = array_merge($teamModels, $value);
             }
         }
         $teamModels = array_unique($teamModels);
