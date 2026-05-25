@@ -41,7 +41,7 @@ trait HasRolesAndPermissions
     public function permissionsThroughRoles(?TeamInterface $team = null): Collection
     {
         return $this->roles($team)
-            ->filter(fn($role) => method_exists($role, 'permissions'))
+            ->filter(fn($role) => is_object($role) && method_exists($role, 'permissions'))
             ->flatMap(fn($role) => $role->permissions())
             ->unique()
             ->values();
@@ -281,11 +281,13 @@ trait HasRolesAndPermissions
 
     private function forgetRolesCacheFor($team): void
     {
+        $this->unsetRelation('roleRelation');
         $this->forgetCacheFor($team, ['roles', 'hasRole', 'permissions', 'hasPermission']);
     }
 
     private function forgetPermissionsCacheFor($team): void
     {
+        $this->unsetRelation('permissionRelation');
         $this->forgetCacheFor($team, ['permissions', 'hasPermission', 'direct-permissions']);
     }
 
