@@ -73,3 +73,20 @@ it('can get teams the user has roles for', function () {
 
     expect($teams)->toHaveCount(1);
 });
+
+it('correctly updates team specific roles and permissions on removal', function () {
+    $user = User::create(['email' => 'cache4@example.com']);
+    $teamA = Team::create(['name' => 'Team A']);
+
+    $user->assignRole(TestRole::ADMIN, $teamA);
+    $user->assignPermission(TestPermission::DELETE_POST, $teamA);
+
+    expect($user->hasRole(TestRole::ADMIN, $teamA))->toBeTrue()
+        ->and($user->hasPermission(TestPermission::DELETE_POST, $teamA))->toBeTrue();
+
+    $user->removeRole(TestRole::ADMIN, $teamA);
+    $user->removePermission(TestPermission::DELETE_POST, $teamA);
+
+    expect($user->hasRole(TestRole::ADMIN, $teamA))->toBeFalse()
+        ->and($user->hasPermission(TestPermission::DELETE_POST, $teamA))->toBeFalse();
+});

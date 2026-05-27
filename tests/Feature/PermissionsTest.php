@@ -83,3 +83,50 @@ it('can check hasAllRoles', function () {
     expect($user->hasAllRoles([TestRole::USER, TestRole::MANAGER]))->toBeTrue();
     expect($user->hasAllRoles([TestRole::USER, TestRole::ADMIN]))->toBeFalse();
 });
+
+it('correctly updates roles on assign and remove', function () {
+    $user = User::create(['email' => 'cache1@example.com']);
+
+    expect($user->hasRole(TestRole::ADMIN))->toBeFalse();
+
+    $user->assignRole(TestRole::ADMIN);
+    expect($user->hasRole(TestRole::ADMIN))->toBeTrue();
+
+    $user->removeRole(TestRole::ADMIN);
+    expect($user->hasRole(TestRole::ADMIN))->toBeFalse();
+});
+
+it('correctly updates permissions on assign and remove', function () {
+    $user = User::create(['email' => 'cache2@example.com']);
+
+    expect($user->hasPermission(TestPermission::CREATE_POST))->toBeFalse();
+
+    $user->assignPermission(TestPermission::CREATE_POST);
+    expect($user->hasPermission(TestPermission::CREATE_POST))->toBeTrue();
+
+    $user->removePermission(TestPermission::CREATE_POST);
+    expect($user->hasPermission(TestPermission::CREATE_POST))->toBeFalse();
+});
+
+it('validates retrieval of specific permissions sets', function () {
+    $user = User::create(['email' => 'cache3@example.com']);
+
+    // No permissions yet
+    expect($user->permissions())->toHaveCount(0);
+    expect($user->directPermissions())->toHaveCount(0);
+    expect($user->permissionsThroughRoles())->toHaveCount(0);
+
+    // Direct permission
+    $user->assignPermission(TestPermission::DELETE_POST);
+
+    expect($user->permissions())->toHaveCount(1)
+        ->and($user->directPermissions())->toHaveCount(1)
+        ->and($user->permissionsThroughRoles())->toHaveCount(0);
+
+    // Permission through role
+    $user->assignRole(TestRole::ADMIN); // Gives CREATE_POST, EDIT_POST
+
+    expect($user->permissions())->toHaveCount(3) // delete (direct), create, edit (role)
+        ->and($user->directPermissions())->toHaveCount(1)
+        ->and($user->permissionsThroughRoles())->toHaveCount(2);
+});
