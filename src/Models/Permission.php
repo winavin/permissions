@@ -14,7 +14,8 @@ abstract class Permission extends MorphPivot
         if (is_null($team)) {
             return $query->whereNull('team_type')->whereNull('team_id');
         }
-        return $query->where('team_type', get_class($team))->where('team_id', $team->getKey());
+        $teamType = method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team);
+        return $query->where('team_type', $teamType)->where('team_id', $team->getKey());
     }
 
     public function team(): MorphTo

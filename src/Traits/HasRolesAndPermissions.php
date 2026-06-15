@@ -137,7 +137,7 @@ trait HasRolesAndPermissions
         return $this->roleRelation()
             ->firstOrCreate([
                 'role' => $role->value,
-                'team_type' => $team ? get_class($team) : null,
+                'team_type' => $team ? (method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team)) : null,
                 'team_id' => $team?->getKey(),
                 'expires_at' => $expiresAt,
             ]);
@@ -154,7 +154,7 @@ trait HasRolesAndPermissions
 
         return $this->permissionRelation()->firstOrCreate([
             'permission' => $permission->value,
-            'team_type' => $team ? get_class($team) : null,
+            'team_type' => $team ? (method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team)) : null,
             'team_id' => $team?->getKey(),
             'expires_at' => $expiresAt,
         ]);
@@ -257,7 +257,7 @@ trait HasRolesAndPermissions
         $userId = $this->id;
 
         if ($team) {
-            $teamClass = str_replace('\\', '.', get_class($team));
+            $teamClass = str_replace('\\', '.', method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team));
             $teamId = $team->getKey();
 
         }
