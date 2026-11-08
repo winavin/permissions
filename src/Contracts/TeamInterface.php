@@ -2,6 +2,4 @@
 
 namespace Winavin\Permissions\Contracts;
 
-interface TeamInterface {
-
-}
+interface TeamInterface {}

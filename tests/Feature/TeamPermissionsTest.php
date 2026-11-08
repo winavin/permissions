@@ -1,9 +1,9 @@
 <?php
 
-use Winavin\Permissions\Tests\User;
-use Winavin\Permissions\Tests\Team;
-use Winavin\Permissions\Tests\Enums\TestRole;
 use Winavin\Permissions\Tests\Enums\TestPermission;
+use Winavin\Permissions\Tests\Enums\TestRole;
+use Winavin\Permissions\Tests\Team;
+use Winavin\Permissions\Tests\User;
 
 it('can assign and check roles with a team', function () {
     $user = User::create(['email' => 'team1@example.com']);

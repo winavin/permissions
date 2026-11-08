@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 class InstallCommand extends Command
 {
     protected $signature = 'permissions:install {--force}';
+
     protected $description = 'Generate necessary scaffolding as per configuration';
 
     public function handle(): void
@@ -27,17 +28,18 @@ class InstallCommand extends Command
             $teams = array_unique($teams);
             $this->generate('teams', 'permissions:make-enums', $teams);
         } else {
-            $this->info("Teams are not enabled in your configuration. Skipping team model generation.");
+            $this->info('Teams are not enabled in your configuration. Skipping team model generation.');
         }
 
-        $this->info("✅ Permissions scaffolding installed successfully!");
+        $this->info('✅ Permissions scaffolding installed successfully!');
     }
 
     protected function generate(string $type, string $command, array $models = []): void
     {
         foreach ($models as $model) {
-            if (!class_exists($model)) {
-                $this->error(ucfirst($type) . " model {$model} does not exist. Please check your configuration.");
+            if (! class_exists($model)) {
+                $this->error(ucfirst($type)." model {$model} does not exist. Please check your configuration.");
+
                 return;
             }
 

@@ -6,32 +6,34 @@ use BackedEnum;
 
 trait EnumHasPermissions
 {
-    public function hasPermission( string|BackedEnum $permission ) : bool
+    public function hasPermission(string|BackedEnum $permission): bool
     {
-        return in_array( $permission, $this->permissions() );
+        return in_array($permission, $this->permissions());
     }
 
-    public function hasAnyPermission( array $permissions ) : bool
+    public function hasAnyPermission(array $permissions): bool
     {
         $hasPermission = false;
-        foreach( $permissions as $permission ) {
-            if( $this->hasPermission( $permission ) ) {
+        foreach ($permissions as $permission) {
+            if ($this->hasPermission($permission)) {
                 $hasPermission = true;
                 break;
             }
         }
+
         return $hasPermission;
     }
 
-    public function hasAllPermissions( array $permissions ) : bool
+    public function hasAllPermissions(array $permissions): bool
     {
         $hasPermission = true;
-        foreach( $permissions as $permission ) {
-            if( !$this->hasPermission( $permission ) ) {
+        foreach ($permissions as $permission) {
+            if (! $this->hasPermission($permission)) {
                 $hasPermission = false;
                 break;
             }
         }
+
         return $hasPermission;
     }
 }

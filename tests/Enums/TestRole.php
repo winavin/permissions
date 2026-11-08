@@ -2,13 +2,15 @@
 
 namespace Winavin\Permissions\Tests\Enums;
 
+use Illuminate\Support\Collection;
+
 enum TestRole: string
 {
     case ADMIN = 'admin';
     case USER = 'user';
     case MANAGER = 'manager';
 
-    public function permissions(): \Illuminate\Support\Collection
+    public function permissions(): Collection
     {
         return match ($this) {
             self::ADMIN => collect([TestPermission::CREATE_POST, TestPermission::EDIT_POST]),

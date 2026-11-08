@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
+use Winavin\Permissions\Contracts\TeamInterface;
 
 class HasAnyPermission
 {
@@ -15,13 +16,14 @@ class HasAnyPermission
             $permissions = explode('|', $permissions);
         }
 
-        if (!$team instanceof \Winavin\Permissions\Contracts\TeamInterface) {
+        if (! $team instanceof TeamInterface) {
             $team = null;
         }
 
-        if (!Auth::user()?->hasAnyPermission($permissions, $team)) {
+        if (! Auth::user()?->hasAnyPermission($permissions, $team)) {
             abort(403, 'You do not have the required permission(s) to access this resource.');
         }
+
         return $next($request);
     }
 }

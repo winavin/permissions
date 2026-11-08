@@ -1,30 +1,30 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Winavin\Permissions\Middlewares\HasAnyRole;
+use Winavin\Permissions\Middlewares\HasAllPermissions;
 use Winavin\Permissions\Middlewares\HasAllRoles;
 use Winavin\Permissions\Middlewares\HasAnyPermission;
-use Winavin\Permissions\Middlewares\HasAllPermissions;
-use Winavin\Permissions\Tests\User;
-use Winavin\Permissions\Tests\Enums\TestRole;
+use Winavin\Permissions\Middlewares\HasAnyRole;
 use Winavin\Permissions\Tests\Enums\TestPermission;
+use Winavin\Permissions\Tests\Enums\TestRole;
+use Winavin\Permissions\Tests\User;
 
 beforeEach(function () {
     Route::get('/middleware-test/any-role', function () {
         return 'ok';
-    })->middleware(HasAnyRole::class . ':admin|manager');
+    })->middleware(HasAnyRole::class.':admin|manager');
 
     Route::get('/middleware-test/all-roles', function () {
         return 'ok';
-    })->middleware(HasAllRoles::class . ':admin|manager');
+    })->middleware(HasAllRoles::class.':admin|manager');
 
     Route::get('/middleware-test/any-permission', function () {
         return 'ok';
-    })->middleware(HasAnyPermission::class . ':create_post|edit_post');
+    })->middleware(HasAnyPermission::class.':create_post|edit_post');
 
     Route::get('/middleware-test/all-permissions', function () {
         return 'ok';
-    })->middleware(HasAllPermissions::class . ':create_post|edit_post');
+    })->middleware(HasAllPermissions::class.':create_post|edit_post');
 });
 
 it('allows access if user has any role', function () {

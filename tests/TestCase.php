@@ -2,11 +2,17 @@
 
 namespace Winavin\Permissions\Tests;
 
-use Orchestra\Testbench\TestCase as Orchestra;
-use Winavin\Permissions\PermissionsServiceProvider;
-use Illuminate\Foundation\Auth\User as AuthUser;
-use Winavin\Permissions\Traits\HasRolesAndPermissions;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Foundation\Auth\User as AuthUser;
+use Orchestra\Testbench\TestCase as Orchestra;
+use Winavin\Permissions\Contracts\TeamInterface;
+use Winavin\Permissions\Models\Permission;
+use Winavin\Permissions\Models\Role;
+use Winavin\Permissions\PermissionsServiceProvider;
+use Winavin\Permissions\Tests\Enums\TestPermission;
+use Winavin\Permissions\Tests\Enums\TestRole;
+use Winavin\Permissions\Traits\HasRolesAndPermissions;
 
 class TestCase extends Orchestra
 {
@@ -14,7 +20,7 @@ class TestCase extends Orchestra
     {
         parent::setUp();
 
-        $this->loadMigrationsFrom(__DIR__ . '/../stubs/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../stubs/migrations');
     }
 
     protected function getPackageProviders($app)
@@ -81,26 +87,31 @@ class User extends AuthUser
     protected $guarded = [];
 }
 
-class UserRoles extends \Winavin\Permissions\Models\Role
+class UserRoles extends Role
 {
     protected $table = 'user_roles';
+
     protected $guarded = [];
+
     protected $casts = [
-        'role' => \Winavin\Permissions\Tests\Enums\TestRole::class
+        'role' => TestRole::class,
     ];
 }
 
-class UserPermissions extends \Winavin\Permissions\Models\Permission
+class UserPermissions extends Permission
 {
     protected $table = 'user_permissions';
+
     protected $guarded = [];
+
     protected $casts = [
-        'permission' => \Winavin\Permissions\Tests\Enums\TestPermission::class
+        'permission' => TestPermission::class,
     ];
 }
 
-class Team extends \Illuminate\Database\Eloquent\Model implements \Winavin\Permissions\Contracts\TeamInterface
+class Team extends Model implements TeamInterface
 {
     protected $table = 'teams';
+
     protected $guarded = [];
 }

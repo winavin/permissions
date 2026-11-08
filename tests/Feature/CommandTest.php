@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\File;
 
 beforeEach(function () {
     // Clean up directories that might have generated files
@@ -97,7 +97,7 @@ it('installs with multiple user models and multiple team models', function () {
     ];
 
     foreach ($dummyClasses as $path => $content) {
-        if (!File::exists(app_path($path))) {
+        if (! File::exists(app_path($path))) {
             File::put(app_path($path), $content);
             require_once app_path($path);
         }
@@ -146,7 +146,7 @@ it('can uninstall generated models, enums and migrations', function () {
     ];
 
     foreach ($dummyClasses as $path => $content) {
-        if (!File::exists(app_path($path))) {
+        if (! File::exists(app_path($path))) {
             File::put(app_path($path), $content);
             require_once app_path($path);
         }

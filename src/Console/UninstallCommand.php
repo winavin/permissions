@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class UninstallCommand extends Command
 {
     protected $signature = 'permissions:uninstall {--model=} {--team=}';
+
     protected $description = 'Remove generated files (models, enums, migrations) based on configuration';
 
     public function handle(): void
@@ -23,7 +24,7 @@ class UninstallCommand extends Command
         if ($modelOpt && $teamOpt) {
             $modelsToUninstall[] = $modelOpt;
             $teamsToUninstall[] = $teamOpt;
-        } elseif ($modelOpt && !$teamOpt) {
+        } elseif ($modelOpt && ! $teamOpt) {
             $modelsToUninstall[] = $modelOpt;
             $modelTeams = $modelsConfig[$modelOpt] ?? [];
             if (is_array($modelTeams)) {
@@ -31,7 +32,7 @@ class UninstallCommand extends Command
             } elseif (is_string($modelTeams)) {
                 $teamsToUninstall[] = $modelTeams;
             }
-        } elseif (!$modelOpt && $teamOpt) {
+        } elseif (! $modelOpt && $teamOpt) {
             $teamsToUninstall[] = $teamOpt;
         } else {
             // Nothing given, uninstall all from config
@@ -61,7 +62,7 @@ class UninstallCommand extends Command
             }
         }
 
-        $this->info("✅ Permissions scaffolding uninstalled successfully!");
+        $this->info('✅ Permissions scaffolding uninstalled successfully!');
     }
 
     protected function deleteModelFiles(string $model): void
@@ -79,7 +80,7 @@ class UninstallCommand extends Command
 
         $baseDir = app_path('Models');
         $subPath = trim($path, '/');
-        $modelDir = $subPath ? $baseDir . '/' . $subPath : $baseDir;
+        $modelDir = $subPath ? $baseDir.'/'.$subPath : $baseDir;
 
         $roleTarget = "{$modelDir}/{$prefix}Roles.php";
         $permissionTarget = "{$modelDir}/{$prefix}Permissions.php";
@@ -122,7 +123,7 @@ class UninstallCommand extends Command
 
         $baseDir = app_path('Enums');
         $subPath = trim($path, '/');
-        $enumDir = $subPath ? $baseDir . '/' . $subPath : $baseDir;
+        $enumDir = $subPath ? $baseDir.'/'.$subPath : $baseDir;
 
         $roleTarget = "{$enumDir}/{$prefix}Role.php";
         $permissionTarget = "{$enumDir}/{$prefix}Permission.php";

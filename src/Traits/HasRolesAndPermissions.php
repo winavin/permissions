@@ -11,22 +11,28 @@ use Winavin\Permissions\Contracts\TeamInterface;
 
 trait HasRolesAndPermissions
 {
-
     public function roleRelation(): HasMany
     {
-        return $this->hasMany($this->getRoleClass())->with('team');
+        return $this->hasMany($this->getRoleClass(), $this->getUserForeignKey())->with('team');
     }
 
     public function permissionRelation(): HasMany
     {
-        return $this->hasMany($this->getPermissionClass())->with('team');
+        return $this->hasMany($this->getPermissionClass(), $this->getUserForeignKey())->with('team');
+    }
+
+    protected function getUserForeignKey(): string
+    {
+        $baseName = method_exists($this, 'getMorphClass') ? class_basename($this->getMorphClass()) : class_basename($this);
+
+        return str($baseName)->snake()->append('_id')->toString();
     }
 
     public function roles(?TeamInterface $team = null): Collection
     {
         return Cache::rememberForever(
             $this->getCacheKey($team, 'roles'),
-            fn() => $this->roleRelation()->forTeam($team)->get()->pluck('role'),
+            fn () => $this->roleRelation()->forTeam($team)->get()->pluck('role'),
         );
     }
 
@@ -34,15 +40,15 @@ trait HasRolesAndPermissions
     {
         return Cache::rememberForever(
             $this->getCacheKey($team, 'direct-permissions'),
-            fn() => $this->permissionRelation()->forTeam($team)->get()->pluck('permission'),
+            fn () => $this->permissionRelation()->forTeam($team)->get()->pluck('permission'),
         );
     }
 
     public function permissionsThroughRoles(?TeamInterface $team = null): Collection
     {
         return $this->roles($team)
-            ->filter(fn($role) => is_object($role) && method_exists($role, 'permissions'))
-            ->flatMap(fn($role) => $role->permissions())
+            ->filter(fn ($role) => is_object($role) && method_exists($role, 'permissions'))
+            ->flatMap(fn ($role) => $role->permissions())
             ->unique()
             ->values();
     }
@@ -51,8 +57,7 @@ trait HasRolesAndPermissions
     {
         return Cache::rememberForever(
             $this->getCacheKey($team, 'permissions'),
-            fn()
-            => collect()
+            fn () => collect()
                 ->merge($this->directPermissions($team))
                 ->merge($this->permissionsThroughRoles($team))
                 ->unique()
@@ -60,12 +65,16 @@ trait HasRolesAndPermissions
         );
     }
 
-    public function hasRole(string|BackedEnum $role, ?TeamInterface $team = null): bool
+    public function hasRole(string|array|BackedEnum $role, ?TeamInterface $team = null): bool
     {
+        if (is_array($role)) {
+            return $this->hasAnyRole($role, $team);
+        }
+
         $search = $this->resolveEnumValue($role);
 
         return $this->roles($team)->contains(
-            fn($r) => $this->resolveEnumValue($r) === $search
+            fn ($r) => $this->resolveEnumValue($r) === $search
         );
     }
 
@@ -78,8 +87,8 @@ trait HasRolesAndPermissions
         $roles = collect($roles);
 
         return $requireAll
-            ? $roles->every(fn($role) => $this->hasRole($role, $team))
-            : $roles->contains(fn($role) => $this->hasRole($role, $team));
+            ? $roles->every(fn ($role) => $this->hasRole($role, $team))
+            : $roles->contains(fn ($role) => $this->hasRole($role, $team));
     }
 
     public function hasAnyRole(array $roles = [], ?TeamInterface $team = null): bool
@@ -101,17 +110,20 @@ trait HasRolesAndPermissions
         $permissions = collect($permissions);
 
         return $requireAll
-            ? $permissions->every(fn($permission) => $this->hasPermission($permission, $team))
-            : $permissions->contains(fn($permission) => $this->hasPermission($permission, $team));
+            ? $permissions->every(fn ($permission) => $this->hasPermission($permission, $team))
+            : $permissions->contains(fn ($permission) => $this->hasPermission($permission, $team));
     }
 
-
-    public function hasPermission(string|BackedEnum $permission, ?TeamInterface $team = null): bool
+    public function hasPermission(string|array|BackedEnum $permission, ?TeamInterface $team = null): bool
     {
+        if (is_array($permission)) {
+            return $this->hasAnyPermission($permission, $team);
+        }
+
         $search = $this->resolveEnumValue($permission);
 
         return $this->permissions($team)->contains(
-            fn($p) => $this->resolveEnumValue($p) === $search
+            fn ($p) => $this->resolveEnumValue($p) === $search
         );
     }
 
@@ -130,58 +142,62 @@ trait HasRolesAndPermissions
         return $this->hasPermission($permission, $team);
     }
 
-    public function assignRole(BackedEnum $role, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
+    public function assignRole(string|BackedEnum $role, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
     {
         $this->forgetRolesCacheFor($team);
+        $roleValue = $this->resolveEnumValue($role);
 
         return $this->roleRelation()
             ->firstOrCreate([
-                'role' => $role->value,
+                'role' => $roleValue,
                 'team_type' => $team ? (method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team)) : null,
                 'team_id' => $team?->getKey(),
                 'expires_at' => $expiresAt,
             ]);
     }
 
-    public function addRole(BackedEnum $role, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
+    public function addRole(string|BackedEnum $role, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
     {
         return $this->assignRole($role, $team, $expiresAt);
     }
 
-    public function assignPermission(BackedEnum $permission, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
+    public function assignPermission(string|BackedEnum $permission, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
     {
         $this->forgetPermissionsCacheFor($team);
+        $permissionValue = $this->resolveEnumValue($permission);
 
         return $this->permissionRelation()->firstOrCreate([
-            'permission' => $permission->value,
+            'permission' => $permissionValue,
             'team_type' => $team ? (method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team)) : null,
             'team_id' => $team?->getKey(),
             'expires_at' => $expiresAt,
         ]);
     }
 
-    public function addPermission(BackedEnum $permission, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
+    public function addPermission(string|BackedEnum $permission, ?TeamInterface $team = null, ?Carbon $expiresAt = null)
     {
         return $this->assignPermission($permission, $team, $expiresAt);
     }
 
-    public function removeRole(BackedEnum $role, ?TeamInterface $team = null)
+    public function removeRole(string|BackedEnum $role, ?TeamInterface $team = null)
     {
         $this->forgetRolesCacheFor($team);
+        $roleValue = $this->resolveEnumValue($role);
 
         return $this->roleRelation()
             ->forTeam($team)
-            ->where('role', $role->value)
+            ->where('role', $roleValue)
             ->delete();
     }
 
-    public function removePermission(BackedEnum $permission, ?TeamInterface $team = null)
+    public function removePermission(string|BackedEnum $permission, ?TeamInterface $team = null)
     {
         $this->forgetPermissionsCacheFor($team);
+        $permissionValue = $this->resolveEnumValue($permission);
 
         return $this->permissionRelation()
             ->forTeam($team)
-            ->where('permission', $permission->value)
+            ->where('permission', $permissionValue)
             ->delete();
     }
 
@@ -211,10 +227,10 @@ trait HasRolesAndPermissions
     {
         $grouped = $this->roleRelation
             ->filter(function ($role) {
-                return !is_null($role->team_type) && !is_null($role->team_id);
+                return ! is_null($role->team_type) && ! is_null($role->team_id);
             })
             ->groupBy(function ($role) {
-                return $role->team_type . ':' . $role->team_id;
+                return $role->team_type.':'.$role->team_id;
             });
 
         return $grouped->map(function ($roles) {
@@ -238,13 +254,13 @@ trait HasRolesAndPermissions
     // Can be replaced in parent class
     protected function getRoleClass(): string
     {
-        return get_class($this) . 'Roles';
+        return get_class($this).'Roles';
     }
 
     // Can be replaced in parent class
     protected function getPermissionClass(): string
     {
-        return get_class($this) . 'Permissions';
+        return get_class($this).'Permissions';
     }
 
     /*
@@ -253,17 +269,17 @@ trait HasRolesAndPermissions
 
     private function getCacheKey(?TeamInterface $team, string $type, string|int|null $value = null): string
     {
-        $userClass = str_replace('\\', '.', get_class($this));
-        $userId = $this->id;
+        $userClass = str_replace('\\', '.', method_exists($this, 'getMorphClass') ? $this->getMorphClass() : get_class($this));
+        $userId = $this->getKey();
 
         if ($team) {
             $teamClass = str_replace('\\', '.', method_exists($team, 'getMorphClass') ? $team->getMorphClass() : get_class($team));
             $teamId = $team->getKey();
 
         }
-        $value = is_null($value) ? '' : "-" . $value;
+        $value = is_null($value) ? '' : '-'.$value;
 
-        return (isset($teamClass) ? $teamClass . '-' : '') . (isset($teamId) ? $teamId . '-' : '') . "$userClass-$userId-$type$value";
+        return (isset($teamClass) ? $teamClass.'-' : '').(isset($teamId) ? $teamId.'-' : '')."$userClass-$userId-$type$value";
     }
 
     private function forgetCache($team, string $type): void
